@@ -47,6 +47,57 @@ struct ActivityListView: View {
     }
 }
 
+struct BansheeSelectorView: View {
+    @ObservedObject var repository = ActivityRepository.shared
+    @State private var selectedType: BansheeLib.ActivityType? = nil
+    let onSelect: (String) -> Void
+
+    var filteredActivities: [ActivitySummary] {
+        repository.getActivities(type: selectedType)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Filter picker
+            Picker("Activity Type", selection: $selectedType) {
+                Text("All").tag(nil as BansheeLib.ActivityType?)
+                ForEach(BansheeLib.ActivityType.allCases, id: \.self) { type in
+                    Label(type.displayName, systemImage: type.icon)
+                        .tag(type as BansheeLib.ActivityType?)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            Divider()
+
+            // Activity list
+            if filteredActivities.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "figure.run")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("No activities yet")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    Text("Complete an activity to race against it")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(filteredActivities) { activity in
+                    Button(action: { onSelect(activity.id) }) {
+                        ActivityRowView(activity: activity)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .navigationTitle("Select Banshee")
+    }
+}
+
 struct ActivityRowView: View {
     let activity: ActivitySummary
 

@@ -101,6 +101,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val activitySelectorLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val activityId = result.data?.getStringExtra("selected_activity_id")
+            if (activityId != null) {
+                loadActivityAsBanshee(activityId)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -135,6 +146,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.radioSkate -> BansheeLib.ActivityType.ROLLER_SKATE
                 else -> BansheeLib.ActivityType.RUN
             }
+            updateStartButtonText()
         }
 
         startStopButton.setOnClickListener {
@@ -146,8 +158,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         selectBestRunButton.setOnClickListener {
-            // Load a sample best run for demo purposes
-            loadSampleBestRun()
+            // Launch activity selector to choose a banshee to race against
+            val intent = Intent(this, ActivityListActivity::class.java)
+            intent.putExtra("select_mode", true)
+            activitySelectorLauncher.launch(intent)
         }
 
         activitiesButton.setOnClickListener {
@@ -270,7 +284,7 @@ class MainActivity : AppCompatActivity() {
 
         trackingService?.stopTracking()
         isRunning = false
-        startStopButton.text = getString(R.string.start_run)
+        updateStartButtonText()
         weatherOverlay.hide()
 
         // Re-enable activity type selection
@@ -368,31 +382,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadSampleBestRun() {
-        // Sample run record JSON for testing
-        val sampleJson = """
-        {
-            "id": "sample-run-1",
-            "name": "Sample 5K",
-            "coordinates": [
-                {"lat": 40.7128, "lon": -74.0060, "timestamp_ms": 0},
-                {"lat": 40.7135, "lon": -74.0055, "timestamp_ms": 60000},
-                {"lat": 40.7142, "lon": -74.0050, "timestamp_ms": 120000},
-                {"lat": 40.7149, "lon": -74.0045, "timestamp_ms": 180000},
-                {"lat": 40.7156, "lon": -74.0040, "timestamp_ms": 240000}
-            ],
-            "total_distance_meters": 500.0,
-            "duration_ms": 240000,
-            "recorded_at": 1700000000000
+    private fun loadActivityAsBanshee(activityId: String) {
+        val activityJson = activityRepository.loadActivity(activityId)
+        if (activityJson == null) {
+            Toast.makeText(this, "Failed to load activity", Toast.LENGTH_SHORT).show()
+            return
         }
-        """.trimIndent()
 
-        val result = BansheeLib.initSession(sampleJson)
+        val result = BansheeLib.initSession(activityJson)
         if (result == 0) {
-            Toast.makeText(this, "Best run loaded!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Banshee loaded!", Toast.LENGTH_SHORT).show()
             mapController.loadBansheeRoute()
         } else {
-            Toast.makeText(this, "Failed to load best run", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Failed to load banshee", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateStartButtonText() {
+        if (!isRunning) {
+            startStopButton.text = when (selectedActivityType) {
+                BansheeLib.ActivityType.RUN -> getString(R.string.start_run)
+                BansheeLib.ActivityType.WALK -> getString(R.string.start_walk)
+                BansheeLib.ActivityType.CYCLE -> getString(R.string.start_cycle)
+                BansheeLib.ActivityType.ROLLER_SKATE -> getString(R.string.start_skate)
+            }
         }
     }
 }

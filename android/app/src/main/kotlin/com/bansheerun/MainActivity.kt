@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     updateUI(status, distance, timeMs, timeDiffMs)
                     mapController.updatePosition(lat, lon, timeMs)
+                    // Update wandering banshee behavior based on pacing
+                    mapController.updateWanderingBansheePacing(status, timeDiffMs)
                 }
             }
         }
@@ -196,6 +198,11 @@ class MainActivity : AppCompatActivity() {
             unbindService(serviceConnection)
             isServiceBound = false
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mapController.onDestroy()
     }
 
     private fun requestInitialLocation() {

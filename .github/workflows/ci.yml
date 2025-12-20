@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build and test on Linux, Windows, and macOS
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+  # Build for Android (arm64-v8a and armeabi-v7a)
+  build-android:
+    name: Build Android (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-linux-android
+            arch: arm64-v8a
+          - target: armv7-linux-androideabi
+            arch: armeabi-v7a
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-android-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-android-${{ matrix.target }}-cargo-
+
+      - name: Build for Android
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: cargo ndk -t ${{ matrix.arch }} build --release
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.arch }}
+          path: target/${{ matrix.target }}/release/*.so
+          if-no-files-found: error
+
+  # Build for iOS (aarch64 and x86_64 simulator)
+  build-ios:
+    name: Build iOS (${{ matrix.target }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-ios
+            name: ios-arm64
+          - target: x86_64-apple-ios
+            name: ios-x86_64-simulator
+          - target: aarch64-apple-ios-sim
+            name: ios-arm64-simulator
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: macos-ios-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            macos-ios-${{ matrix.target }}-cargo-
+
+      - name: Build for iOS
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: target/${{ matrix.target }}/release/*.a
+          if-no-files-found: error
+
+  # Publish packages on main branch
+  publish:
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    needs: [build, build-android, build-ios]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Android package
+        run: |
+          mkdir -p packages/android/jniLibs/arm64-v8a
+          mkdir -p packages/android/jniLibs/armeabi-v7a
+          cp artifacts/android-arm64-v8a/*.so packages/android/jniLibs/arm64-v8a/ || true
+          cp artifacts/android-armeabi-v7a/*.so packages/android/jniLibs/armeabi-v7a/ || true
+
+      - name: Create iOS package
+        run: |
+          mkdir -p packages/ios
+          cp artifacts/ios-arm64/*.a packages/ios/ || true
+          cp artifacts/ios-x86_64-simulator/*.a packages/ios/ || true
+          cp artifacts/ios-arm64-simulator/*.a packages/ios/ || true
+
+      - name: Upload Android package
+        uses: actions/upload-artifact@v4
+        with:
+          name: banshee-run-android
+          path: packages/android
+          retention-days: 90
+
+      - name: Upload iOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: banshee-run-ios
+          path: packages/ios
+          retention-days: 90

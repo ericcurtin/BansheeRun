@@ -106,5 +106,5 @@ release version:
     gh release create "{{version}}" \
         --title "BansheeRun {{version}}" \
         --generate-notes \
-        packages/banshee-run.apk \
-        packages/banshee-run-ios.zip
+        packages/bansheerun.apk \
+        packages/bansheerun-ios.zip

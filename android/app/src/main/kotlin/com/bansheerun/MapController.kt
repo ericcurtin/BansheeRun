@@ -123,6 +123,13 @@ class MapController(
         mapView.invalidate()
     }
 
+    fun setInitialPosition(lat: Double, lon: Double) {
+        val point = GeoPoint(lat, lon)
+        runnerMarker?.position = point
+        mapView.controller.setCenter(point)
+        mapView.invalidate()
+    }
+
     fun onResume() {
         mapView.onResume()
     }

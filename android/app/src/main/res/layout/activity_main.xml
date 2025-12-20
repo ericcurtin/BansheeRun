@@ -1,88 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <!-- Full-screen map -->
+    <!-- Map takes up top 50% of screen -->
     <org.osmdroid.views.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
-    <!-- Stats overlay at top -->
+    <!-- Bottom 50% contains stats and controls -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:background="#80000000"
-        android:layout_gravity="top">
+        android:background="#303030">
 
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="wrap_content"
+        <!-- Stats section -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/status_unknown"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@android:color/white" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_unknown"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/distanceText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="0.0 km"
+                    android:textSize="18sp"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/timeText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="00:00"
+                    android:textSize="18sp"
+                    android:textColor="@android:color/white" />
+
+                <TextView
+                    android:id="@+id/timeDiffText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textColor="@android:color/white" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Spacer to push buttons to bottom -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Button controls at bottom -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:padding="16dp"
+            android:gravity="center">
 
-            <TextView
-                android:id="@+id/distanceText"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+            <Button
+                android:id="@+id/startStopButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0.0 km"
-                android:textSize="16sp"
-                android:textColor="@android:color/white" />
+                android:text="@string/start_run"
+                android:layout_marginEnd="16dp" />
 
-            <TextView
-                android:id="@+id/timeText"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+            <Button
+                android:id="@+id/selectBestRunButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="00:00"
-                android:textSize="16sp"
-                android:textColor="@android:color/white" />
-
-            <TextView
-                android:id="@+id/timeDiffText"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="@android:color/white" />
+                android:text="@string/select_best_run" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Button controls at bottom -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center"
-        android:background="#80000000"
-        android:layout_gravity="bottom">
-
-        <Button
-            android:id="@+id/startStopButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/start_run"
-            android:layout_marginEnd="16dp" />
-
-        <Button
-            android:id="@+id/selectBestRunButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/select_best_run" />
-    </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>

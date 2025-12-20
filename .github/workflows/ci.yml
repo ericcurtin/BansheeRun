@@ -9,6 +9,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Restrict permissions to read-only by default for security
+permissions:
+  contents: read
+
 jobs:
   # Build and test on Linux, Windows, and macOS
   build:
@@ -165,15 +169,25 @@ jobs:
         run: |
           mkdir -p packages/android/jniLibs/arm64-v8a
           mkdir -p packages/android/jniLibs/armeabi-v7a
-          cp artifacts/android-arm64-v8a/*.so packages/android/jniLibs/arm64-v8a/ || true
-          cp artifacts/android-armeabi-v7a/*.so packages/android/jniLibs/armeabi-v7a/ || true
+          if [ -d "artifacts/android-arm64-v8a" ]; then
+            cp artifacts/android-arm64-v8a/*.so packages/android/jniLibs/arm64-v8a/
+          fi
+          if [ -d "artifacts/android-armeabi-v7a" ]; then
+            cp artifacts/android-armeabi-v7a/*.so packages/android/jniLibs/armeabi-v7a/
+          fi
 
       - name: Create iOS package
         run: |
           mkdir -p packages/ios
-          cp artifacts/ios-arm64/*.a packages/ios/ || true
-          cp artifacts/ios-x86_64-simulator/*.a packages/ios/ || true
-          cp artifacts/ios-arm64-simulator/*.a packages/ios/ || true
+          if [ -d "artifacts/ios-arm64" ]; then
+            cp artifacts/ios-arm64/*.a packages/ios/
+          fi
+          if [ -d "artifacts/ios-x86_64-simulator" ]; then
+            cp artifacts/ios-x86_64-simulator/*.a packages/ios/
+          fi
+          if [ -d "artifacts/ios-arm64-simulator" ]; then
+            cp artifacts/ios-arm64-simulator/*.a packages/ios/
+          fi
 
       - name: Upload Android package
         uses: actions/upload-artifact@v4

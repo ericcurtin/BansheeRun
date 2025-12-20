@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import org.osmdroid.views.MapView
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +25,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeDiffText: TextView
     private lateinit var startStopButton: Button
     private lateinit var selectBestRunButton: Button
+    private lateinit var mapView: MapView
+    private lateinit var mapController: MapController
 
     private var trackingService: RunTrackingService? = null
     private var isServiceBound = false
@@ -34,9 +37,10 @@ class MainActivity : AppCompatActivity() {
             val binder = service as RunTrackingService.LocalBinder
             trackingService = binder.getService()
             isServiceBound = true
-            trackingService?.setUpdateCallback { status, distance, timeMs, timeDiffMs ->
+            trackingService?.setUpdateCallback { status, distance, timeMs, timeDiffMs, lat, lon ->
                 runOnUiThread {
                     updateUI(status, distance, timeMs, timeDiffMs)
+                    mapController.updatePosition(lat, lon, timeMs)
                 }
             }
         }
@@ -83,6 +87,10 @@ class MainActivity : AppCompatActivity() {
         startStopButton = findViewById(R.id.startStopButton)
         selectBestRunButton = findViewById(R.id.selectBestRunButton)
 
+        mapView = findViewById(R.id.mapView)
+        mapController = MapController(this, mapView)
+        mapController.initialize()
+
         startStopButton.setOnClickListener {
             if (isRunning) {
                 stopRun()
@@ -102,6 +110,16 @@ class MainActivity : AppCompatActivity() {
         Intent(this, RunTrackingService::class.java).also { intent ->
             bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mapController.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapController.onPause()
     }
 
     override fun onStop() {
@@ -150,6 +168,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startRun() {
+        mapController.resetCurrentRun()
         val intent = Intent(this, RunTrackingService::class.java)
         ContextCompat.startForegroundService(this, intent)
         trackingService?.startTracking()
@@ -212,6 +231,7 @@ class MainActivity : AppCompatActivity() {
         val result = BansheeLib.initSession(sampleJson)
         if (result == 0) {
             Toast.makeText(this, "Best run loaded!", Toast.LENGTH_SHORT).show()
+            mapController.loadBansheeRoute()
         } else {
             Toast.makeText(this, "Failed to load best run", Toast.LENGTH_SHORT).show()
         }

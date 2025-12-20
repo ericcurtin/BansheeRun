@@ -30,7 +30,7 @@ class RunTrackingService : Service() {
     private var totalDistance: Double = 0.0
     private var lastLocation: Location? = null
 
-    private var updateCallback: ((BansheeLib.PacingStatus, Double, Long, Long) -> Unit)? = null
+    private var updateCallback: ((BansheeLib.PacingStatus, Double, Long, Long, Double, Double) -> Unit)? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): RunTrackingService = this@RunTrackingService
@@ -54,7 +54,7 @@ class RunTrackingService : Service() {
         return START_STICKY
     }
 
-    fun setUpdateCallback(callback: (BansheeLib.PacingStatus, Double, Long, Long) -> Unit) {
+    fun setUpdateCallback(callback: (BansheeLib.PacingStatus, Double, Long, Long, Double, Double) -> Unit) {
         updateCallback = callback
     }
 
@@ -121,7 +121,7 @@ class RunTrackingService : Service() {
             elapsedMs
         )
 
-        updateCallback?.invoke(status, totalDistance, elapsedMs, timeDiffMs)
+        updateCallback?.invoke(status, totalDistance, elapsedMs, timeDiffMs, location.latitude, location.longitude)
     }
 
     private fun createNotificationChannel() {

@@ -157,6 +157,42 @@ impl BansheeSession {
         points.windows(2).map(|w| w[0].distance_to(&w[1])).sum()
     }
 
+    /// Gets the banshee's interpolated position at a given elapsed time.
+    /// Returns (latitude, longitude) or None if no coordinates available.
+    pub fn get_banshee_position_at_time(&self, elapsed_ms: u64) -> Option<(f64, f64)> {
+        if self.best_run_coords.is_empty() {
+            return None;
+        }
+
+        // Find the two points that bracket the elapsed time
+        for i in 0..self.best_run_coords.len() {
+            if self.best_run_coords[i].timestamp_ms >= elapsed_ms {
+                if i == 0 {
+                    let p = &self.best_run_coords[0];
+                    return Some((p.lat, p.lon));
+                }
+
+                // Interpolate between points
+                let prev = &self.best_run_coords[i - 1];
+                let curr = &self.best_run_coords[i];
+
+                let time_ratio = if curr.timestamp_ms > prev.timestamp_ms {
+                    (elapsed_ms - prev.timestamp_ms) as f64
+                        / (curr.timestamp_ms - prev.timestamp_ms) as f64
+                } else {
+                    0.0
+                };
+
+                let lat = prev.lat + (curr.lat - prev.lat) * time_ratio;
+                let lon = prev.lon + (curr.lon - prev.lon) * time_ratio;
+                return Some((lat, lon));
+            }
+        }
+
+        // Beyond the best run - return last position
+        self.best_run_coords.last().map(|p| (p.lat, p.lon))
+    }
+
     /// Gets the banshee's distance from start at a given elapsed time.
     fn get_banshee_distance_at_time(&self, elapsed_ms: u64) -> f64 {
         if self.best_run_coords.is_empty() {

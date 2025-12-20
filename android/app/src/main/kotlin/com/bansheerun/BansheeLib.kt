@@ -67,6 +67,20 @@ object BansheeLib {
     @JvmStatic
     external fun getBestRunDurationMs(): Long
 
+    /**
+     * Get banshee position at elapsed time.
+     * @return DoubleArray of [lat, lon] or empty array if no session
+     */
+    @JvmStatic
+    external fun getBansheePositionAtTime(elapsedMs: Long): DoubleArray
+
+    /**
+     * Get all best run coordinates as [lat1, lon1, lat2, lon2, ...].
+     * @return DoubleArray of coordinates or empty array if no session
+     */
+    @JvmStatic
+    external fun getBestRunCoordinates(): DoubleArray
+
     // Kotlin helper functions
 
     fun getPacingStatusEnum(lat: Double, lon: Double, elapsedMs: Long): PacingStatus {

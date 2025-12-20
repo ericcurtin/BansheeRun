@@ -39,6 +39,9 @@ clean:
 setup:
     rustup component add rustfmt clippy
 
+# Setup all targets for cross-compilation
+setup-all: setup setup-android setup-ios setup-macos
+
 # === Android Builds ===
 
 # Install cargo-ndk for Android builds
@@ -100,7 +103,7 @@ build-all: build build-android build-ios build-macos
 ci: check
 
 # Full CI pipeline including cross-platform builds
-ci-full: check build-android build-ios
+ci-full: check build-android build-ios build-macos
 
 # === Android APK Build ===
 
@@ -150,6 +153,14 @@ prepare-packages:
 publish-prepare: copy-android-libs build-apk prepare-packages
 
 # === Release ===
+
+# Generate a release version string
+generate-version:
+    @echo "v0.1.0-$(date +'%Y%m%d.%H%M%S')"
+
+# Show structure of artifacts directory (for debugging)
+show-artifacts:
+    ls -R artifacts
 
 # Create a GitHub release with APK, iOS, and macOS packages
 # Usage: just release v1.0.0

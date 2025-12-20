@@ -132,8 +132,11 @@ build-apk:
 # Create Android debug keystore if it doesn't exist
 create-android-keystore:
     mkdir -p ~/.android
-    if [ ! -f ~/.android/debug.keystore ]; then \
-        keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"; \
+    if [ ! -f ~/.android/release.keystore ]; then \
+            keytool -genkey -v -keystore android/app/release.keystore \
+              -storepass bansheerun -alias bansheerun -keypass bansheerun \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=BansheeRun CI,O=BansheeRun,C=US"; \
     fi
 
 # Copy native libraries from artifacts to Android jniLibs

@@ -101,10 +101,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            storeFile = file("release.keystore")
+            storePassword = "bansheerun"
+            keyAlias = "bansheerun"
+            keyPassword = "bansheerun"
         }
     }
 

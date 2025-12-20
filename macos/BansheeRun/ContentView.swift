@@ -3,6 +3,7 @@ import CoreLocation
 
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
+    @ObservedObject var repository = ActivityRepository.shared
 
     @State private var isRunning = false
     @State private var startTime: Date?
@@ -14,56 +15,150 @@ struct ContentView: View {
     @State private var timer: Timer?
     @State private var elapsedMs: Int64 = 0
 
+    // Activity tracking
+    @State private var selectedActivityType: BansheeLib.ActivityType = .run
+    @State private var recordedCoordinates: [(lat: Double, lon: Double, timestamp: Int64)] = []
+
+    // Navigation
+    @State private var showingActivityList = false
+    @State private var showingPersonalBests = false
+    @State private var showingNewPBAlert = false
+    @State private var newPBs: [PersonalBest] = []
+
     var body: some View {
-        VStack(spacing: 16) {
-            // Status text
-            Text(statusText)
-                .font(.system(size: 24, weight: .bold))
+        NavigationStack {
+            VStack(spacing: 16) {
+                // Activity type picker
+                Picker("Activity Type", selection: $selectedActivityType) {
+                    ForEach(BansheeLib.ActivityType.allCases, id: \.self) { type in
+                        Label(type.displayName, systemImage: type.icon)
+                            .tag(type)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(isRunning)
+                .padding(.horizontal)
 
-            // Distance
-            Text(String(format: "Distance: %.2f km", totalDistance / 1000.0))
-                .font(.system(size: 18))
+                Divider()
 
-            // Time
-            Text(timeText)
-                .font(.system(size: 18))
+                // Status text
+                Text(statusText)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(pacingStatusColor)
 
-            // Time difference
-            Text(timeDiffText)
-                .font(.system(size: 18))
+                // Distance
+                Text(BansheeLib.formatDistance(distanceMeters: totalDistance))
+                    .font(.system(size: 32, weight: .bold))
 
-            Spacer().frame(height: 32)
+                // Time
+                Text(timeText)
+                    .font(.system(size: 18))
 
-            // Start/Stop button
-            Button(action: toggleRun) {
-                Text(isRunning ? "Stop Run" : "Start Run")
+                // Pace
+                if totalDistance > 0 && elapsedMs > 0 {
+                    Text(BansheeLib.formatPace(distanceMeters: totalDistance, durationMs: elapsedMs))
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
+                }
+
+                // Time difference
+                if pacingStatus != .unknown {
+                    Text(timeDiffText)
+                        .font(.system(size: 18))
+                        .foregroundColor(timeDifferenceMs >= 0 ? .green : .red)
+                }
+
+                Spacer().frame(height: 32)
+
+                // Start/Stop button
+                Button(action: toggleRun) {
+                    HStack {
+                        Image(systemName: isRunning ? "stop.fill" : "play.fill")
+                        Text(isRunning ? "Stop" : "Start")
+                    }
                     .frame(minWidth: 120)
-            }
-            .buttonStyle(.borderedProminent)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(isRunning ? .red : .green)
 
-            // Select Best Run button
-            Button(action: loadSampleBestRun) {
-                Text("Select Best Run")
-                    .frame(minWidth: 120)
-            }
-            .buttonStyle(.bordered)
+                // Select Best Run button
+                Button(action: loadSampleBestRun) {
+                    Text("Load Banshee (Demo)")
+                        .frame(minWidth: 120)
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRunning)
 
-            // Status messages
-            if let error = locationManager.locationError {
-                Text("Error: \(error)")
-                    .foregroundColor(.red)
-                    .font(.caption)
-            }
+                Spacer()
 
-            if locationManager.authorizationStatus == .denied {
-                Text("Location access denied. Please enable in System Preferences.")
-                    .foregroundColor(.orange)
-                    .font(.caption)
-                    .multilineTextAlignment(.center)
+                // Navigation buttons
+                HStack(spacing: 20) {
+                    Button(action: { showingActivityList = true }) {
+                        VStack {
+                            Image(systemName: "list.bullet")
+                                .font(.title2)
+                            Text("Activities")
+                                .font(.caption)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(action: { showingPersonalBests = true }) {
+                        VStack {
+                            Image(systemName: "trophy")
+                                .font(.title2)
+                            Text("PBs")
+                                .font(.caption)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                // Status messages
+                if let error = locationManager.locationError {
+                    Text("Error: \(error)")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+
+                if locationManager.authorizationStatus == .denied {
+                    Text("Location access denied. Please enable in System Preferences.")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(32)
+            .frame(minWidth: 350, minHeight: 500)
+            .navigationTitle("BansheeRun")
+            .sheet(isPresented: $showingActivityList) {
+                NavigationStack {
+                    ActivityListView()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { showingActivityList = false }
+                            }
+                        }
+                }
+                .frame(minWidth: 400, minHeight: 500)
+            }
+            .sheet(isPresented: $showingPersonalBests) {
+                NavigationStack {
+                    PersonalBestsView()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { showingPersonalBests = false }
+                            }
+                        }
+                }
+                .frame(minWidth: 400, minHeight: 500)
+            }
+            .alert("New Personal Best!", isPresented: $showingNewPBAlert) {
+                Button("OK") { }
+            } message: {
+                Text(newPBAlertMessage)
             }
         }
-        .padding(32)
-        .frame(minWidth: 300, minHeight: 400)
         .onReceive(locationManager.$currentLocation) { location in
             guard let location = location, isRunning else { return }
             updateWithLocation(location)
@@ -71,6 +166,18 @@ struct ContentView: View {
         .onAppear {
             locationManager.requestPermission()
         }
+    }
+
+    private var pacingStatusColor: Color {
+        switch pacingStatus {
+        case .ahead: return .green
+        case .behind: return .red
+        case .unknown: return .primary
+        }
+    }
+
+    private var newPBAlertMessage: String {
+        newPBs.map { "\($0.distanceName): \($0.formattedTime)" }.joined(separator: "\n")
     }
 
     private var statusText: String {
@@ -118,6 +225,7 @@ struct ContentView: View {
         elapsedMs = 0
         pacingStatus = .unknown
         timeDifferenceMs = 0
+        recordedCoordinates = []
 
         locationManager.startTracking()
 
@@ -133,6 +241,52 @@ struct ContentView: View {
         timer?.invalidate()
         timer = nil
         locationManager.stopTracking()
+
+        // Save activity if we have coordinates
+        if recordedCoordinates.count >= 2 {
+            saveActivity()
+        }
+    }
+
+    private func saveActivity() {
+        // Build coordinates JSON
+        let coordsArray = recordedCoordinates.map { coord in
+            """
+            {"lat":\(coord.lat),"lon":\(coord.lon),"timestamp_ms":\(coord.timestamp)}
+            """
+        }
+        let coordsJson = "[\(coordsArray.joined(separator: ","))]"
+
+        // Generate activity ID and name
+        let id = UUID().uuidString
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d 'at' h:mm a"
+        let name = "\(selectedActivityType.displayName) - \(dateFormatter.string(from: Date()))"
+        let recordedAt = Int64(Date().timeIntervalSince1970 * 1000)
+
+        // Create activity JSON via Rust
+        guard let activityJson = BansheeLib.createActivityJson(
+            id: id,
+            name: name,
+            activityType: selectedActivityType,
+            coordsJson: coordsJson,
+            recordedAt: recordedAt
+        ) else {
+            print("Failed to create activity")
+            return
+        }
+
+        // Check for new PBs before saving
+        let achievedPBs = repository.getNewPBs(activityJson: activityJson)
+
+        // Save activity
+        repository.saveActivity(activityJson: activityJson)
+
+        // Show PB alert if any new records
+        if !achievedPBs.isEmpty {
+            newPBs = achievedPBs
+            showingNewPBAlert = true
+        }
     }
 
     private func updateWithLocation(_ location: CLLocation) {
@@ -149,6 +303,9 @@ struct ContentView: View {
 
         pacingStatus = BansheeLib.getPacingStatus(lat: lat, lon: lon, elapsedMs: elapsedMs)
         timeDifferenceMs = BansheeLib.getTimeDifferenceMs(lat: lat, lon: lon, elapsedMs: elapsedMs)
+
+        // Record coordinate for saving
+        recordedCoordinates.append((lat: lat, lon: lon, timestamp: elapsedMs))
     }
 
     private func loadSampleBestRun() {

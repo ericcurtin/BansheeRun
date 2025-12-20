@@ -55,12 +55,14 @@ SWIFT_SOURCES=(
     "$SCRIPT_DIR/BansheeRun/ContentView.swift"
     "$SCRIPT_DIR/BansheeRun/BansheeLib.swift"
     "$SCRIPT_DIR/BansheeRun/LocationManager.swift"
+    "$SCRIPT_DIR/BansheeRun/ActivityRepository.swift"
+    "$SCRIPT_DIR/BansheeRun/ActivityListView.swift"
 )
 
 swiftc \
     -O \
     -whole-module-optimization \
-    -target "${ARCH}-apple-macosx12.0" \
+    -target "${ARCH}-apple-macosx13.0" \
     -sdk "$(xcrun --show-sdk-path)" \
     -import-objc-header "$SCRIPT_DIR/BansheeRun/BansheeRun-Bridging-Header.h" \
     -L "$RUST_LIB_DIR" \

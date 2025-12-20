@@ -30,7 +30,12 @@ class RunTrackingService : Service() {
     private var totalDistance: Double = 0.0
     private var lastLocation: Location? = null
 
+    // Recorded coordinates for saving activity
+    private val recordedCoordinates = mutableListOf<RecordedCoordinate>()
+
     private var updateCallback: ((BansheeLib.PacingStatus, Double, Long, Long, Double, Double) -> Unit)? = null
+
+    data class RecordedCoordinate(val lat: Double, val lon: Double, val timestampMs: Long)
 
     inner class LocalBinder : Binder() {
         fun getService(): RunTrackingService = this@RunTrackingService
@@ -65,6 +70,7 @@ class RunTrackingService : Service() {
         startTimeMs = System.currentTimeMillis()
         totalDistance = 0.0
         lastLocation = null
+        recordedCoordinates.clear()
 
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
             .setMinUpdateIntervalMillis(500)
@@ -108,6 +114,9 @@ class RunTrackingService : Service() {
         }
         lastLocation = location
 
+        // Record coordinate for saving
+        recordedCoordinates.add(RecordedCoordinate(location.latitude, location.longitude, elapsedMs))
+
         // Get pacing status from Rust library
         val status = BansheeLib.getPacingStatusEnum(
             location.latitude,
@@ -123,6 +132,12 @@ class RunTrackingService : Service() {
 
         updateCallback?.invoke(status, totalDistance, elapsedMs, timeDiffMs, location.latitude, location.longitude)
     }
+
+    fun getRecordedCoordinates(): List<RecordedCoordinate> = recordedCoordinates.toList()
+
+    fun getTotalDistance(): Double = totalDistance
+
+    fun getElapsedMs(): Long = if (startTimeMs > 0) System.currentTimeMillis() - startTimeMs else 0
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

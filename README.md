@@ -1,35 +1,35 @@
 # BansheeRun
 
-A running app that motivates runners by comparing their current pace against their "ghost" (best run) and plays audio cues when falling behind.
+A running app that motivates runners by comparing their current pace against their "banshee" (best run) and plays audio cues when falling behind.
 
 ## Architecture
 
-BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coordinate processing, and ghost comparisons are implemented in Rust, while platform-specific shells (Android/iOS) handle UI and system-level APIs (GPS, Audio, Notifications).
+BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coordinate processing, and banshee comparisons are implemented in Rust, while platform-specific shells (Android/iOS) handle UI and system-level APIs (GPS, Audio, Notifications).
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Mobile App                           │
-├─────────────────────────────────────────────────────────┤
+┌────────────────────────────────────────────────────────┐
+│                    Mobile App                          │
+├────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐     ┌─────────────────┐           │
 │  │   Android UI    │     │     iOS UI      │           │
 │  │   (Kotlin)      │     │    (Swift)      │           │
 │  └────────┬────────┘     └────────┬────────┘           │
-│           │                       │                     │
+│           │                       │                    │
 │  ┌────────▼────────┐     ┌────────▼────────┐           │
 │  │ Android APIs    │     │   iOS APIs      │           │
 │  │ - GPS Service   │     │ - CoreLocation  │           │
 │  │ - AudioManager  │     │ - AVAudioSession│           │
 │  │ - ForegroundSvc │     │ - Background    │           │
 │  └────────┬────────┘     └────────┬────────┘           │
-│           │                       │                     │
-│           │       FFI Bridge      │                     │
-│           │   (JNI / uniffi-rs)   │                     │
-│           └───────────┬───────────┘                     │
-│                       │                                 │
+│           │                       │                    │
+│           │       FFI Bridge      │                    │
+│           │   (JNI / uniffi-rs)   │                    │
+│           └───────────┬───────────┘                    │
+│                       │                                │
 │  ┌────────────────────▼────────────────────┐           │
 │  │          Rust Core Library              │           │
 │  │  ┌──────────────────────────────────┐   │           │
-│  │  │         GhostSession             │   │           │
+│  │  │        BansheeSession            │   │           │
 │  │  │  - Pacing comparison logic       │   │           │
 │  │  │  - Distance calculations         │   │           │
 │  │  │  - Time interpolation            │   │           │
@@ -45,7 +45,7 @@ BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coord
 │  │  │  - Haversine distance            │   │           │
 │  │  └──────────────────────────────────┘   │           │
 │  └─────────────────────────────────────────┘           │
-└─────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────┘
 ```
 
 ## Rust Core Library
@@ -64,19 +64,19 @@ let la = Point::new(34.0522, -118.2437, 0);
 let distance = nyc.distance_to(&la); // ~3,935 km
 ```
 
-### GhostSession
+### BansheeSession
 
-Tracks the current run against a previous best run (the "ghost").
+Tracks the current run against a previous best run (the "banshee").
 
 ```rust
-use banshee_run::{GhostSession, Point};
+use banshee_run::{BansheeSession, Point};
 
 // Load best run coordinates from storage
 let best_run = vec![
     Point::new(40.7128, -74.0060, 0),
     Point::new(40.7135, -74.0055, 10000),
 ];
-let session = GhostSession::new(best_run);
+let session = BansheeSession::new(best_run);
 
 // Check pacing in real-time
 let current_pos = Point::new(40.7130, -74.0058, 15000);
@@ -114,7 +114,7 @@ let loaded = RunRecord::from_json(&json).unwrap();
 
 ### Prerequisites
 
-- Rust toolchain (1.70+)
+- Rust toolchain
 - For Android: [cargo-ndk](https://github.com/nickelc/cargo-ndk) or NDK directly
 - For iOS: Xcode and [cargo-xcode](https://gitlab.com/nickelc/cargo-xcode)
 
@@ -175,6 +175,3 @@ The iOS app uses **Background Modes** for location updates:
 | `cargo clippy` | Lints the codebase |
 | `cargo fmt` | Formats the code |
 
-## License
-
-Apache License 2.0 - see [LICENSE](LICENSE) for details.

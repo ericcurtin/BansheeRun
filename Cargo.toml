@@ -2,7 +2,7 @@
 name = "banshee_run"
 version = "0.1.0"
 edition = "2021"
-description = "A Rust core library for the BansheeRun running app - pacing logic and ghost comparisons"
+description = "A Rust core library for the BansheeRun running app - pacing logic and banshee comparisons"
 license = "Apache-2.0"
 repository = "https://github.com/ericcurtin/BansheeRun"
 

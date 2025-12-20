@@ -1,13 +1,13 @@
-//! Ghost Session - Core pacing logic for comparing current run against a "ghost" (best run).
+//! Banshee Session - Core pacing logic for comparing current run against a "banshee" (best run).
 
 use crate::point::Point;
 
-/// A ghost session that tracks the current run against a previous best run.
+/// A banshee session that tracks the current run against a previous best run.
 ///
-/// The "ghost" represents the runner's previous best performance, and this session
+/// The "banshee" represents the runner's previous best performance, and this session
 /// compares the current run in real-time to determine if the runner is ahead or behind.
 #[derive(Debug, Clone)]
-pub struct GhostSession {
+pub struct BansheeSession {
     /// The coordinates from the best run, loaded from storage.
     pub best_run_coords: Vec<Point>,
     /// Total distance covered in the best run (cached for performance).
@@ -17,16 +17,16 @@ pub struct GhostSession {
 /// Result of a pacing comparison.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PacingStatus {
-    /// Runner is ahead of the ghost.
+    /// Runner is ahead of the banshee.
     Ahead,
-    /// Runner is behind the ghost.
+    /// Runner is behind the banshee.
     Behind,
     /// Cannot determine (e.g., not enough data).
     Unknown,
 }
 
-impl GhostSession {
-    /// Creates a new GhostSession with the given best run coordinates.
+impl BansheeSession {
+    /// Creates a new BansheeSession with the given best run coordinates.
     ///
     /// # Arguments
     ///
@@ -35,13 +35,13 @@ impl GhostSession {
     /// # Example
     ///
     /// ```
-    /// use banshee_run::{GhostSession, Point};
+    /// use banshee_run::{BansheeSession, Point};
     ///
     /// let best_run = vec![
     ///     Point::new(40.7128, -74.0060, 0),
     ///     Point::new(40.7135, -74.0055, 10000),
     /// ];
-    /// let session = GhostSession::new(best_run);
+    /// let session = BansheeSession::new(best_run);
     /// ```
     pub fn new(best_run_coords: Vec<Point>) -> Self {
         let best_run_total_distance = Self::calculate_total_distance(&best_run_coords);
@@ -64,7 +64,7 @@ impl GhostSession {
             .unwrap_or(0)
     }
 
-    /// Checks if the runner is behind the ghost at the current position and time.
+    /// Checks if the runner is behind the banshee at the current position and time.
     ///
     /// # Arguments
     ///
@@ -73,19 +73,19 @@ impl GhostSession {
     ///
     /// # Returns
     ///
-    /// `true` if the ghost is further ahead, `false` otherwise.
+    /// `true` if the banshee is further ahead, `false` otherwise.
     ///
     /// # Example
     ///
     /// ```
-    /// use banshee_run::{GhostSession, Point};
+    /// use banshee_run::{BansheeSession, Point};
     ///
     /// let best_run = vec![
     ///     Point::new(40.7128, -74.0060, 0),
     ///     Point::new(40.7135, -74.0055, 10000),
     ///     Point::new(40.7142, -74.0050, 20000),
     /// ];
-    /// let session = GhostSession::new(best_run);
+    /// let session = BansheeSession::new(best_run);
     ///
     /// // Current position after 15 seconds
     /// let current = Point::new(40.7130, -74.0058, 15000);
@@ -98,7 +98,7 @@ impl GhostSession {
         )
     }
 
-    /// Gets the detailed pacing status comparing current position to the ghost.
+    /// Gets the detailed pacing status comparing current position to the banshee.
     ///
     /// # Arguments
     ///
@@ -113,20 +113,20 @@ impl GhostSession {
             return PacingStatus::Unknown;
         }
 
-        // Get ghost position at the elapsed time
-        let ghost_distance = self.get_ghost_distance_at_time(elapsed_ms);
+        // Get banshee position at the elapsed time
+        let banshee_distance = self.get_banshee_distance_at_time(elapsed_ms);
 
         // Calculate current distance from start
         let current_distance = self.calculate_distance_from_start(current_pos);
 
-        if ghost_distance > current_distance {
+        if banshee_distance > current_distance {
             PacingStatus::Behind
         } else {
             PacingStatus::Ahead
         }
     }
 
-    /// Gets the time difference between the runner and the ghost at the current position.
+    /// Gets the time difference between the runner and the banshee at the current position.
     ///
     /// # Arguments
     ///
@@ -143,9 +143,9 @@ impl GhostSession {
         }
 
         let current_distance = self.calculate_distance_from_start(current_pos);
-        let ghost_time_at_distance = self.get_ghost_time_at_distance(current_distance);
+        let banshee_time_at_distance = self.get_banshee_time_at_distance(current_distance);
 
-        elapsed_ms as i64 - ghost_time_at_distance as i64
+        elapsed_ms as i64 - banshee_time_at_distance as i64
     }
 
     /// Calculates the total distance covered in a sequence of points.
@@ -157,8 +157,8 @@ impl GhostSession {
         points.windows(2).map(|w| w[0].distance_to(&w[1])).sum()
     }
 
-    /// Gets the ghost's distance from start at a given elapsed time.
-    fn get_ghost_distance_at_time(&self, elapsed_ms: u64) -> f64 {
+    /// Gets the banshee's distance from start at a given elapsed time.
+    fn get_banshee_distance_at_time(&self, elapsed_ms: u64) -> f64 {
         if self.best_run_coords.is_empty() {
             return 0.0;
         }
@@ -197,8 +197,8 @@ impl GhostSession {
         self.best_run_total_distance
     }
 
-    /// Gets the ghost's time to reach a given distance.
-    fn get_ghost_time_at_distance(&self, distance: f64) -> u64 {
+    /// Gets the banshee's time to reach a given distance.
+    fn get_banshee_time_at_distance(&self, distance: f64) -> u64 {
         if self.best_run_coords.is_empty() {
             return 0;
         }
@@ -277,9 +277,9 @@ mod tests {
     }
 
     #[test]
-    fn test_ghost_session_creation() {
+    fn test_banshee_session_creation() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords.clone());
+        let session = BansheeSession::new(coords.clone());
         assert_eq!(session.best_run_coords.len(), 5);
         assert!(session.best_run_distance() > 0.0);
     }
@@ -287,14 +287,14 @@ mod tests {
     #[test]
     fn test_best_run_duration() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords);
+        let session = BansheeSession::new(coords);
         assert_eq!(session.best_run_duration_ms(), 20000);
     }
 
     #[test]
     fn test_pacing_status_at_start() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords.clone());
+        let session = BansheeSession::new(coords.clone());
 
         // At the start, should be at same position
         let current = Point::new(40.7128, -74.0060, 0);
@@ -306,7 +306,7 @@ mod tests {
     #[test]
     fn test_pacing_status_behind() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords.clone());
+        let session = BansheeSession::new(coords.clone());
 
         // Still at start after 10 seconds - should be behind
         let current = Point::new(40.7128, -74.0060, 10000);
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn test_pacing_status_ahead() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords.clone());
+        let session = BansheeSession::new(coords.clone());
 
         // At position 4 (far ahead) after only 5 seconds - should be ahead
         let current = Point::new(40.7144, -74.0048, 5000);
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn test_is_behind() {
         let coords = create_test_run();
-        let session = GhostSession::new(coords.clone());
+        let session = BansheeSession::new(coords.clone());
 
         // Still at start after 10 seconds - should be behind
         let current = Point::new(40.7128, -74.0060, 10000);
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_empty_best_run() {
-        let session = GhostSession::new(vec![]);
+        let session = BansheeSession::new(vec![]);
         let current = Point::new(40.7128, -74.0060, 10000);
 
         assert_eq!(

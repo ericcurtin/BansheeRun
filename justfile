@@ -182,6 +182,10 @@ generate-version:
 show-artifacts:
     ls -R artifacts
 
+# List packages for upload (used by CI to verify packages exist)
+list-packages:
+    @ls -la packages/
+
 # Create a GitHub release with APK, iOS, and macOS packages
 # Usage: just release v1.0.0
 release version:

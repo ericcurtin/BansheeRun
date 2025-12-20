@@ -10,6 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 # Restrict permissions to read-only by default for security
+# Note: publish job overrides this with write access for releases
 permissions:
   contents: read
 
@@ -30,6 +31,18 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install just (Linux)
+        if: runner.os == 'Linux'
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+      - name: Install just (macOS)
+        if: runner.os == 'macOS'
+        run: brew install just
+
+      - name: Install just (Windows)
+        if: runner.os == 'Windows'
+        run: choco install just
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -42,16 +55,16 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build
-        run: cargo build --release
+        run: just build
 
       - name: Run tests
-        run: cargo test
+        run: just test
 
       - name: Run clippy
-        run: cargo clippy -- -D warnings
+        run: just clippy
 
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: just fmt-check
 
   # Build for Android (arm64-v8a and armeabi-v7a)
   build-android:
@@ -63,8 +76,10 @@ jobs:
         include:
           - target: aarch64-linux-android
             arch: arm64-v8a
+            just-target: build-android-arm64
           - target: armv7-linux-androideabi
             arch: armeabi-v7a
+            just-target: build-android-arm32
     steps:
       - uses: actions/checkout@v4
 
@@ -73,8 +88,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
       - name: Install cargo-ndk
-        run: cargo install cargo-ndk
+        run: just install-ndk
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
@@ -96,7 +114,7 @@ jobs:
       - name: Build for Android
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: cargo ndk -t ${{ matrix.arch }} build --release
+        run: just ${{ matrix.just-target }}
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
@@ -115,10 +133,13 @@ jobs:
         include:
           - target: aarch64-apple-ios
             name: ios-arm64
+            just-target: build-ios-device
           - target: x86_64-apple-ios
             name: ios-x86_64-simulator
+            just-target: build-ios-sim-x86
           - target: aarch64-apple-ios-sim
             name: ios-arm64-simulator
+            just-target: build-ios-sim-arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -126,6 +147,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Install just
+        run: brew install just
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -139,7 +163,7 @@ jobs:
             macos-ios-${{ matrix.target }}-cargo-
 
       - name: Build for iOS
-        run: cargo build --release --target ${{ matrix.target }}
+        run: just ${{ matrix.just-target }}
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
@@ -154,8 +178,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-android, build-ios]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -165,19 +200,29 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R artifacts
 
-      - name: Create Android package
+      - name: Copy native libraries to Android project
         run: |
-          mkdir -p packages/android/jniLibs/arm64-v8a
-          mkdir -p packages/android/jniLibs/armeabi-v7a
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          mkdir -p android/app/src/main/jniLibs/armeabi-v7a
           if [ -d "artifacts/android-arm64-v8a" ]; then
-            cp artifacts/android-arm64-v8a/*.so packages/android/jniLibs/arm64-v8a/
+            cp artifacts/android-arm64-v8a/*.so android/app/src/main/jniLibs/arm64-v8a/
           fi
           if [ -d "artifacts/android-armeabi-v7a" ]; then
-            cp artifacts/android-armeabi-v7a/*.so packages/android/jniLibs/armeabi-v7a/
+            cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/
           fi
 
-      - name: Create iOS package
+      - name: Build Android APK
+        working-directory: android
         run: |
+          chmod +x ./gradlew 2>/dev/null || true
+          ./gradlew assembleRelease --no-daemon || gradle assembleRelease --no-daemon
+
+      - name: Prepare release packages
+        run: |
+          mkdir -p packages
+          # Copy APK
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/banshee-run.apk
+          # Create iOS package
           mkdir -p packages/ios
           if [ -d "artifacts/ios-arm64" ]; then
             cp artifacts/ios-arm64/*.a packages/ios/
@@ -188,17 +233,13 @@ jobs:
           if [ -d "artifacts/ios-arm64-simulator" ]; then
             cp artifacts/ios-arm64-simulator/*.a packages/ios/
           fi
+          cd packages && zip -r banshee-run-ios.zip ios/
 
-      - name: Upload Android package
-        uses: actions/upload-artifact@v4
-        with:
-          name: banshee-run-android
-          path: packages/android
-          retention-days: 90
+      - name: Generate release version
+        id: version
+        run: echo "version=v0.1.0-$(date +'%Y%m%d.%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Upload iOS package
-        uses: actions/upload-artifact@v4
-        with:
-          name: banshee-run-ios
-          path: packages/ios
-          retention-days: 90
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: just release ${{ steps.version.outputs.version }}

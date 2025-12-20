@@ -1,6 +1,6 @@
 //! JNI bindings for Android.
 
-use jni::objects::{JClass, JString};
+use jni::objects::{JClass, JDoubleArray, JString};
 use jni::sys::{jdouble, jint, jlong};
 use jni::JNIEnv;
 use std::sync::Mutex;
@@ -192,5 +192,83 @@ pub extern "system" fn Java_com_bansheerun_BansheeLib_createRunRecordJson<'local
             Err(_) => 0,
         },
         Err(_) => 0,
+    }
+}
+
+/// Get banshee position at elapsed time.
+/// Returns a double array [lat, lon] or empty array if no session.
+#[no_mangle]
+pub extern "system" fn Java_com_bansheerun_BansheeLib_getBansheePositionAtTime<'local>(
+    env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    elapsed_ms: jlong,
+) -> JDoubleArray<'local> {
+    let empty = || {
+        env.new_double_array(0)
+            .unwrap_or_else(|_| JDoubleArray::default())
+    };
+
+    if let Ok(guard) = SESSION.lock() {
+        if let Some(ref session) = *guard {
+            if let Some((lat, lon)) = session.get_banshee_position_at_time(elapsed_ms as u64) {
+                match env.new_double_array(2) {
+                    Ok(arr) => {
+                        let buf = [lat, lon];
+                        if env.set_double_array_region(&arr, 0, &buf).is_ok() {
+                            return arr;
+                        }
+                        empty()
+                    }
+                    Err(_) => empty(),
+                }
+            } else {
+                empty()
+            }
+        } else {
+            empty()
+        }
+    } else {
+        empty()
+    }
+}
+
+/// Get all best run coordinates as a flattened array [lat1, lon1, lat2, lon2, ...].
+#[no_mangle]
+pub extern "system" fn Java_com_bansheerun_BansheeLib_getBestRunCoordinates<'local>(
+    env: JNIEnv<'local>,
+    _class: JClass<'local>,
+) -> JDoubleArray<'local> {
+    let empty = || {
+        env.new_double_array(0)
+            .unwrap_or_else(|_| JDoubleArray::default())
+    };
+
+    if let Ok(guard) = SESSION.lock() {
+        if let Some(ref session) = *guard {
+            let coords = &session.best_run_coords;
+            if coords.is_empty() {
+                return empty();
+            }
+
+            let size = coords.len() * 2;
+            match env.new_double_array(size as i32) {
+                Ok(arr) => {
+                    let mut buf: Vec<f64> = Vec::with_capacity(size);
+                    for point in coords {
+                        buf.push(point.lat);
+                        buf.push(point.lon);
+                    }
+                    if env.set_double_array_region(&arr, 0, &buf).is_ok() {
+                        return arr;
+                    }
+                    empty()
+                }
+                Err(_) => empty(),
+            }
+        } else {
+            empty()
+        }
+    } else {
+        empty()
     }
 }

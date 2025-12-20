@@ -33,6 +33,18 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
+        <activity
+            android:name=".ActivityListActivity"
+            android:exported="false"
+            android:label="Activities"
+            android:theme="@style/Theme.BansheeRun" />
+
+        <activity
+            android:name=".PersonalBestsActivity"
+            android:exported="false"
+            android:label="Personal Bests"
+            android:theme="@style/Theme.BansheeRun" />
+
     </application>
 
 </manifest>

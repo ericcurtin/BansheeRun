@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.widget.Button
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +20,10 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import org.osmdroid.views.MapView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +33,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeDiffText: TextView
     private lateinit var startStopButton: Button
     private lateinit var selectBestRunButton: Button
+    private lateinit var activitiesButton: Button
+    private lateinit var pbsButton: Button
+    private lateinit var activityTypeGroup: RadioGroup
     private lateinit var mapView: MapView
     private lateinit var mapController: MapController
     private lateinit var weatherOverlay: BansheeWeatherOverlay
@@ -36,6 +44,9 @@ class MainActivity : AppCompatActivity() {
     private var trackingService: RunTrackingService? = null
     private var isServiceBound = false
     private var isRunning = false
+    private var selectedActivityType: BansheeLib.ActivityType = BansheeLib.ActivityType.RUN
+
+    private lateinit var activityRepository: ActivityRepository
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -94,12 +105,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        activityRepository = ActivityRepository.getInstance(this)
+
         statusText = findViewById(R.id.statusText)
         distanceText = findViewById(R.id.distanceText)
         timeText = findViewById(R.id.timeText)
         timeDiffText = findViewById(R.id.timeDiffText)
         startStopButton = findViewById(R.id.startStopButton)
         selectBestRunButton = findViewById(R.id.selectBestRunButton)
+        activitiesButton = findViewById(R.id.activitiesButton)
+        pbsButton = findViewById(R.id.pbsButton)
+        activityTypeGroup = findViewById(R.id.activityTypeGroup)
 
         mapView = findViewById(R.id.mapView)
         mapController = MapController(this, mapView)
@@ -109,6 +125,17 @@ class MainActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestInitialLocation()
+
+        // Activity type selection
+        activityTypeGroup.setOnCheckedChangeListener { _, checkedId ->
+            selectedActivityType = when (checkedId) {
+                R.id.radioRun -> BansheeLib.ActivityType.RUN
+                R.id.radioWalk -> BansheeLib.ActivityType.WALK
+                R.id.radioCycle -> BansheeLib.ActivityType.CYCLE
+                R.id.radioSkate -> BansheeLib.ActivityType.ROLLER_SKATE
+                else -> BansheeLib.ActivityType.RUN
+            }
+        }
 
         startStopButton.setOnClickListener {
             if (isRunning) {
@@ -121,6 +148,14 @@ class MainActivity : AppCompatActivity() {
         selectBestRunButton.setOnClickListener {
             // Load a sample best run for demo purposes
             loadSampleBestRun()
+        }
+
+        activitiesButton.setOnClickListener {
+            startActivity(Intent(this, ActivityListActivity::class.java))
+        }
+
+        pbsButton.setOnClickListener {
+            startActivity(Intent(this, PersonalBestsActivity::class.java))
         }
     }
 
@@ -221,13 +256,79 @@ class MainActivity : AppCompatActivity() {
         trackingService?.startTracking()
         isRunning = true
         startStopButton.text = getString(R.string.stop_run)
+        // Disable activity type selection while running
+        for (i in 0 until activityTypeGroup.childCount) {
+            activityTypeGroup.getChildAt(i).isEnabled = false
+        }
     }
 
     private fun stopRun() {
+        // Get recorded data before stopping
+        val coordinates = trackingService?.getRecordedCoordinates() ?: emptyList()
+        val totalDistance = trackingService?.getTotalDistance() ?: 0.0
+        val durationMs = trackingService?.getElapsedMs() ?: 0L
+
         trackingService?.stopTracking()
         isRunning = false
         startStopButton.text = getString(R.string.start_run)
         weatherOverlay.hide()
+
+        // Re-enable activity type selection
+        for (i in 0 until activityTypeGroup.childCount) {
+            activityTypeGroup.getChildAt(i).isEnabled = true
+        }
+
+        // Save activity if we have enough data
+        if (coordinates.size >= 2) {
+            saveActivity(coordinates, totalDistance, durationMs)
+        }
+    }
+
+    private fun saveActivity(
+        coordinates: List<RunTrackingService.RecordedCoordinate>,
+        totalDistance: Double,
+        durationMs: Long
+    ) {
+        // Build coordinates JSON
+        val coordsJson = coordinates.joinToString(
+            prefix = "[",
+            postfix = "]",
+            separator = ","
+        ) { coord ->
+            """{"lat":${coord.lat},"lon":${coord.lon},"timestamp_ms":${coord.timestampMs}}"""
+        }
+
+        // Generate activity ID and name
+        val id = UUID.randomUUID().toString()
+        val dateFormat = SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault())
+        val typeName = selectedActivityType.displayName
+        val name = "$typeName - ${dateFormat.format(Date())}"
+        val recordedAt = System.currentTimeMillis()
+
+        // Create activity JSON via Rust
+        val activityJson = BansheeLib.createActivityJson(
+            id, name, selectedActivityType.value, coordsJson, recordedAt
+        )
+
+        if (activityJson != null) {
+            // Check for new PBs before saving
+            val newPBs = activityRepository.getNewPBs(activityJson)
+
+            // Save activity
+            activityRepository.saveActivity(activityJson)
+
+            // Show PB toast if any new records
+            if (newPBs.isNotEmpty()) {
+                val pbMessage = newPBs.joinToString("\n") { pb ->
+                    "${pb.getDistanceName()}: ${pb.getFormattedTime()}"
+                }
+                Toast.makeText(this, "New PB!\n$pbMessage", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Activity saved!", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "Failed to save activity", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateUI(

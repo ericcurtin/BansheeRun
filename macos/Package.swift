@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "BansheeRun",
     platforms: [
-        .macOS(.v12)
+        .macOS(.v13)
     ],
     products: [
         .executable(name: "BansheeRun", targets: ["BansheeRun"])
@@ -14,7 +14,7 @@ let package = Package(
             name: "BansheeRun",
             path: "BansheeRun",
             exclude: ["banshee_run.h", "Info.plist", "BansheeRun.entitlements", "BansheeRun-Bridging-Header.h"],
-            sources: ["BansheeRunApp.swift", "ContentView.swift", "BansheeLib.swift", "LocationManager.swift"],
+            sources: ["BansheeRunApp.swift", "ContentView.swift", "BansheeLib.swift", "LocationManager.swift", "ActivityRepository.swift", "ActivityListView.swift"],
             swiftSettings: [
                 .unsafeFlags([
                     "-import-objc-header", "BansheeRun/BansheeRun-Bridging-Header.h"

@@ -163,7 +163,7 @@ jobs:
           path: target/${{ matrix.target }}/release/*.a
           if-no-files-found: error
 
-  # Build for macOS (arm64)
+  # Build for macOS (arm64) with .pkg installer
   build-macos:
     name: Build macOS (arm64)
     runs-on: macos-latest
@@ -189,8 +189,11 @@ jobs:
           restore-keys: |
             macos-arm64-cargo-
 
-      - name: Build for macOS
+      - name: Build Rust library for macOS
         run: just build-macos
+
+      - name: Build macOS .pkg installer
+        run: just build-macos-pkg
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -199,6 +202,13 @@ jobs:
           path: |
             target/aarch64-apple-darwin/release/*.a
             target/aarch64-apple-darwin/release/*.dylib
+          if-no-files-found: error
+
+      - name: Upload macOS .pkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-pkg
+          path: macos/build/BansheeRun.pkg
           if-no-files-found: error
 
   # Build packages (runs on all PRs and pushes)

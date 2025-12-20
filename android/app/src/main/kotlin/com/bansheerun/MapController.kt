@@ -16,6 +16,7 @@ class MapController(
 ) {
     private var runnerMarker: Marker? = null
     private var bansheeMarker: Marker? = null
+    private var wanderingBansheeOverlay: WanderingBansheeOverlay? = null
 
     private val currentRunPolyline: Polyline = Polyline().apply {
         outlinePaint.color = Color.BLUE
@@ -64,6 +65,11 @@ class MapController(
 
         mapView.overlays.add(runnerMarker)
         mapView.overlays.add(bansheeMarker)
+
+        // Initialize wandering banshee overlay
+        wanderingBansheeOverlay = WanderingBansheeOverlay(context, mapView)
+        mapView.overlays.add(wanderingBansheeOverlay)
+        wanderingBansheeOverlay?.startWandering()
     }
 
     fun loadBansheeRoute() {
@@ -104,6 +110,9 @@ class MapController(
 
         runnerMarker?.position = currentPoint
 
+        // Update wandering banshee center to follow the runner
+        wanderingBansheeOverlay?.setCenter(currentPoint)
+
         val shouldAddPoint = lastAddedPoint?.let { last ->
             currentPoint.distanceToAsDouble(last) >= MIN_POINT_DISTANCE_METERS
         } ?: true
@@ -123,18 +132,39 @@ class MapController(
         mapView.invalidate()
     }
 
+    /**
+     * Update the wandering banshee's behavior based on pacing status
+     */
+    fun updateWanderingBansheePacing(status: BansheeLib.PacingStatus, timeDiffMs: Long) {
+        wanderingBansheeOverlay?.updatePacingStatus(status, timeDiffMs)
+    }
+
+    /**
+     * Set visibility of the wandering banshee
+     */
+    fun setWanderingBansheeVisible(visible: Boolean) {
+        wanderingBansheeOverlay?.setWanderingVisible(visible)
+    }
+
     fun setInitialPosition(lat: Double, lon: Double) {
         val point = GeoPoint(lat, lon)
         runnerMarker?.position = point
+        wanderingBansheeOverlay?.setCenter(point)
         mapView.controller.setCenter(point)
         mapView.invalidate()
     }
 
     fun onResume() {
         mapView.onResume()
+        wanderingBansheeOverlay?.onResume()
     }
 
     fun onPause() {
         mapView.onPause()
+        wanderingBansheeOverlay?.onPause()
+    }
+
+    fun onDestroy() {
+        wanderingBansheeOverlay?.onDestroy()
     }
 }

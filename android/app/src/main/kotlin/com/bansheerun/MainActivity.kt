@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectBestRunButton: Button
     private lateinit var mapView: MapView
     private lateinit var mapController: MapController
+    private lateinit var weatherOverlay: BansheeWeatherOverlay
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private var trackingService: RunTrackingService? = null
@@ -103,6 +104,8 @@ class MainActivity : AppCompatActivity() {
         mapView = findViewById(R.id.mapView)
         mapController = MapController(this, mapView)
         mapController.initialize()
+
+        weatherOverlay = findViewById(R.id.weatherOverlay)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestInitialLocation()
@@ -224,6 +227,7 @@ class MainActivity : AppCompatActivity() {
         trackingService?.stopTracking()
         isRunning = false
         startStopButton.text = getString(R.string.start_run)
+        weatherOverlay.hide()
     }
 
     private fun updateUI(
@@ -250,6 +254,16 @@ class MainActivity : AppCompatActivity() {
             timeDiffText.text = String.format("%s%d seconds", sign, diffSeconds)
         } else {
             timeDiffText.text = ""
+        }
+
+        // Show banshee weather effects when falling behind
+        when (status) {
+            BansheeLib.PacingStatus.BEHIND -> {
+                // Intensity increases based on how far behind (more seconds behind = stronger effect)
+                val intensity = (kotlin.math.abs(timeDiffMs) / 30000f).coerceIn(0.3f, 1f)
+                weatherOverlay.setIntensity(intensity)
+            }
+            else -> weatherOverlay.hide()
         }
     }
 

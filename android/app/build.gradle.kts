@@ -41,7 +41,8 @@ val generateAppIcons by tasks.registering {
 
         if (hasSips) {
             // macOS: use sips
-            exec { commandLine("sips", "-p", "700", "700", logoFile.absolutePath, "--out", squareFile.absolutePath) }
+            // Use larger canvas (1000x1000) to keep logo in adaptive icon safe zone (~66% center area)
+            exec { commandLine("sips", "-p", "1000", "1000", logoFile.absolutePath, "--out", squareFile.absolutePath) }
 
             // Mipmap icons (launcher icons for older devices)
             val mipmapSizes = mapOf("mdpi" to 48, "hdpi" to 72, "xhdpi" to 96, "xxhdpi" to 144, "xxxhdpi" to 192)
@@ -59,7 +60,8 @@ val generateAppIcons by tasks.registering {
             }
         } else if (hasConvert) {
             // Linux/CI: use ImageMagick
-            exec { commandLine("convert", logoFile.absolutePath, "-gravity", "center", "-background", "none", "-extent", "700x700", squareFile.absolutePath) }
+            // Use larger canvas (1000x1000) to keep logo in adaptive icon safe zone (~66% center area)
+            exec { commandLine("convert", logoFile.absolutePath, "-gravity", "center", "-background", "none", "-extent", "1000x1000", squareFile.absolutePath) }
 
             val mipmapSizes = mapOf("mdpi" to 48, "hdpi" to 72, "xhdpi" to 96, "xxhdpi" to 144, "xxxhdpi" to 192)
             mipmapSizes.forEach { (density, size) ->

@@ -113,6 +113,13 @@ build-apk:
 
 # === Publish Pipeline ===
 
+# Create Android debug keystore if it doesn't exist
+create-android-keystore:
+    mkdir -p ~/.android
+    if [ ! -f ~/.android/debug.keystore ]; then \
+        keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"; \
+    fi
+
 # Copy native libraries from artifacts to Android jniLibs
 # Expects artifacts in ./artifacts/ directory
 copy-android-libs:
@@ -129,7 +136,7 @@ copy-android-libs:
 # Expects Android APK built and iOS/macOS artifacts in ./artifacts/
 prepare-packages:
     mkdir -p packages
-    cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/bansheerun.apk
+    cp android/app/build/outputs/apk/release/app-release.apk packages/bansheerun.apk
     mkdir -p packages/ios
     if [ -d "artifacts/ios-arm64" ]; then \
         cp artifacts/ios-arm64/*.a packages/ios/; \
@@ -150,7 +157,7 @@ prepare-packages:
 
 # Full publish preparation (everything except the release)
 # Run this on PRs to validate the entire publish pipeline
-publish-prepare: copy-android-libs build-apk prepare-packages
+publish-prepare: copy-android-libs create-android-keystore build-apk prepare-packages
 
 # === Release ===
 

@@ -1,6 +1,6 @@
 # BansheeRun
 
-<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/446c87a7-be65-4900-9a39-3fe048642b11" />
+<img width="700" height="558" alt="banshee" src="https://github.com/user-attachments/assets/b1e0a8f6-24fa-4bc6-9a6b-5e1a9acc01be" />
 
 A running app that motivates runners by comparing their current pace against their "banshee" (best run) and plays audio cues when falling behind.
 

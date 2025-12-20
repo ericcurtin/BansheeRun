@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BansheeRun</string>
+    <string name="start_run">Start Run</string>
+    <string name="stop_run">Stop Run</string>
+    <string name="select_best_run">Select Best Run</string>
+    <string name="no_best_run">No best run selected</string>
+    <string name="status_ahead">You\'re ahead of the banshee!</string>
+    <string name="status_behind">The banshee is catching up!</string>
+    <string name="status_unknown">Warming up...</string>
+    <string name="notification_channel_name">Run Tracking</string>
+    <string name="notification_title">BansheeRun Active</string>
+    <string name="notification_text">Tracking your run...</string>
+</resources>

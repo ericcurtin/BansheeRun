@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var showingPersonalBests = false
     @State private var showingNewPBAlert = false
     @State private var newPBs: [PersonalBest] = []
+    @State private var showingBansheeSelector = false
 
     var body: some View {
         NavigationStack {
@@ -74,16 +75,16 @@ struct ContentView: View {
                 Button(action: toggleRun) {
                     HStack {
                         Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                        Text(isRunning ? "Stop" : "Start")
+                        Text(isRunning ? "Stop" : startButtonText)
                     }
                     .frame(minWidth: 120)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(isRunning ? .red : .green)
 
-                // Select Best Run button
-                Button(action: loadSampleBestRun) {
-                    Text("Load Banshee (Demo)")
+                // Select Banshee button
+                Button(action: { showingBansheeSelector = true }) {
+                    Text("Select Banshee")
                         .frame(minWidth: 120)
                 }
                 .buttonStyle(.bordered)
@@ -153,6 +154,20 @@ struct ContentView: View {
                 }
                 .frame(minWidth: 400, minHeight: 500)
             }
+            .sheet(isPresented: $showingBansheeSelector) {
+                NavigationStack {
+                    BansheeSelectorView { activityId in
+                        showingBansheeSelector = false
+                        loadActivityAsBanshee(id: activityId)
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showingBansheeSelector = false }
+                        }
+                    }
+                }
+                .frame(minWidth: 400, minHeight: 500)
+            }
             .alert("New Personal Best!", isPresented: $showingNewPBAlert) {
                 Button("OK") { }
             } message: {
@@ -186,6 +201,10 @@ struct ContentView: View {
         case .behind: return "BEHIND"
         case .unknown: return "---"
         }
+    }
+
+    private var startButtonText: String {
+        "Start \(selectedActivityType.displayName)"
     }
 
     private var timeText: String {
@@ -308,30 +327,17 @@ struct ContentView: View {
         recordedCoordinates.append((lat: lat, lon: lon, timestamp: elapsedMs))
     }
 
-    private func loadSampleBestRun() {
-        // Sample run record JSON for testing (same as Android)
-        let sampleJson = """
-        {
-            "id": "sample-run-1",
-            "name": "Sample 5K",
-            "coordinates": [
-                {"lat": 40.7128, "lon": -74.0060, "timestamp_ms": 0},
-                {"lat": 40.7135, "lon": -74.0055, "timestamp_ms": 60000},
-                {"lat": 40.7142, "lon": -74.0050, "timestamp_ms": 120000},
-                {"lat": 40.7149, "lon": -74.0045, "timestamp_ms": 180000},
-                {"lat": 40.7156, "lon": -74.0040, "timestamp_ms": 240000}
-            ],
-            "total_distance_meters": 500.0,
-            "duration_ms": 240000,
-            "recorded_at": 1700000000000
+    private func loadActivityAsBanshee(id: String) {
+        guard let activityJson = repository.loadActivity(id: id) else {
+            print("Failed to load activity")
+            return
         }
-        """
 
-        let result = BansheeLib.initSession(json: sampleJson)
+        let result = BansheeLib.initSession(json: activityJson)
         if result == 0 {
-            print("Best run loaded!")
+            print("Banshee loaded!")
         } else {
-            print("Failed to load best run: \(result)")
+            print("Failed to load banshee: \(result)")
         }
     }
 }

@@ -2,8 +2,11 @@
 <resources>
     <string name="app_name">BansheeRun</string>
     <string name="start_run">Start Run</string>
-    <string name="stop_run">Stop Run</string>
-    <string name="select_best_run">Select Best Run</string>
+    <string name="start_walk">Start Walk</string>
+    <string name="start_cycle">Start Cycle</string>
+    <string name="start_skate">Start Skate</string>
+    <string name="stop_run">Stop</string>
+    <string name="select_banshee">Select Banshee</string>
     <string name="no_best_run">No best run selected</string>
     <string name="status_ahead">You\'re ahead of the banshee!</string>
     <string name="status_behind">The banshee is catching up!</string>

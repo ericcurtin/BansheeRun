@@ -1,6 +1,7 @@
 package com.bansheerun
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -15,6 +16,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import org.osmdroid.views.MapView
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectBestRunButton: Button
     private lateinit var mapView: MapView
     private lateinit var mapController: MapController
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private var trackingService: RunTrackingService? = null
     private var isServiceBound = false
@@ -48,6 +52,15 @@ class MainActivity : AppCompatActivity() {
         override fun onServiceDisconnected(name: ComponentName?) {
             trackingService = null
             isServiceBound = false
+        }
+    }
+
+    private val initialLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        if (fineLocationGranted) {
+            getInitialLocation()
         }
     }
 
@@ -91,6 +104,9 @@ class MainActivity : AppCompatActivity() {
         mapController = MapController(this, mapView)
         mapController.initialize()
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        requestInitialLocation()
+
         startStopButton.setOnClickListener {
             if (isRunning) {
                 stopRun()
@@ -127,6 +143,34 @@ class MainActivity : AppCompatActivity() {
         if (isServiceBound) {
             unbindService(serviceConnection)
             isServiceBound = false
+        }
+    }
+
+    private fun requestInitialLocation() {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                getInitialLocation()
+            }
+            else -> {
+                initialLocationPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                )
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getInitialLocation() {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            location?.let {
+                mapController.setInitialPosition(it.latitude, it.longitude)
+            }
         }
     }
 

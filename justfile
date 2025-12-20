@@ -81,10 +81,20 @@ build-ios-sim-arm64:
 # Build for all iOS targets
 build-ios: build-ios-device build-ios-sim-x86 build-ios-sim-arm64
 
+# === macOS Builds ===
+
+# Install macOS target
+setup-macos:
+    rustup target add aarch64-apple-darwin
+
+# Build for macOS Apple Silicon (arm64)
+build-macos:
+    cargo build --release --target aarch64-apple-darwin
+
 # === All Platforms ===
 
 # Build for all platforms (requires all targets installed)
-build-all: build build-android build-ios
+build-all: build build-android build-ios build-macos
 
 # Full CI pipeline (all checks)
 ci: check
@@ -112,8 +122,8 @@ copy-android-libs:
         cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/; \
     fi
 
-# Prepare release packages (APK + iOS zip)
-# Expects Android APK built and iOS artifacts in ./artifacts/
+# Prepare release packages (APK + iOS zip + macOS pkg)
+# Expects Android APK built and iOS/macOS artifacts in ./artifacts/
 prepare-packages:
     mkdir -p packages
     cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/bansheerun.apk
@@ -128,6 +138,12 @@ prepare-packages:
         cp artifacts/ios-arm64-simulator/*.a packages/ios/; \
     fi
     cd packages && zip -r bansheerun-ios.zip ios/
+    mkdir -p packages/macos
+    if [ -d "artifacts/macos-arm64" ]; then \
+        cp artifacts/macos-arm64/*.a packages/macos/; \
+        cp artifacts/macos-arm64/*.dylib packages/macos/; \
+    fi
+    cd packages && zip -r bansheerun-macos.zip macos/
 
 # Full publish preparation (everything except the release)
 # Run this on PRs to validate the entire publish pipeline
@@ -135,11 +151,12 @@ publish-prepare: copy-android-libs build-apk prepare-packages
 
 # === Release ===
 
-# Create a GitHub release with APK and iOS packages
+# Create a GitHub release with APK, iOS, and macOS packages
 # Usage: just release v1.0.0
 release version:
     gh release create "{{version}}" \
         --title "BansheeRun {{version}}" \
         --generate-notes \
         packages/bansheerun.apk \
-        packages/bansheerun-ios.zip
+        packages/bansheerun-ios.zip \
+        packages/bansheerun-macos.zip

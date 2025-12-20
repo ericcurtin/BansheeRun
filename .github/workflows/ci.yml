@@ -250,6 +250,30 @@ jobs:
       - name: Build and prepare packages
         run: just publish-prepare
 
+      - name: List packages
+        run: just list-packages
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bansheerun-apk
+          path: packages/bansheerun.apk
+          if-no-files-found: error
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bansheerun-ios
+          path: packages/bansheerun-ios.zip
+          if-no-files-found: error
+
+      - name: Upload macOS pkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bansheerun-macos-pkg
+          path: packages/bansheerun-macos.pkg
+          if-no-files-found: error
+
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:

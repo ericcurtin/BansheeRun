@@ -17,6 +17,9 @@ pub mod run_record;
 #[cfg(target_os = "android")]
 mod android;
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+mod macos;
+
 pub use banshee_session::BansheeSession;
 pub use point::Point;
 pub use run_record::RunRecord;

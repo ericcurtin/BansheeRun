@@ -86,13 +86,25 @@ build-ios: build-ios-device build-ios-sim-x86 build-ios-sim-arm64
 
 # === macOS Builds ===
 
-# Install macOS target
+# Install macOS targets
 setup-macos:
-    rustup target add aarch64-apple-darwin
+    rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
 # Build for macOS Apple Silicon (arm64)
 build-macos:
     cargo build --release --target aarch64-apple-darwin
+
+# Build for macOS x86_64 (Intel)
+build-macos-x86:
+    cargo build --release --target x86_64-apple-darwin
+
+# Build macOS app bundle
+build-macos-app:
+    cd macos && ./build.sh
+
+# Install macOS app to /Applications
+install-macos-app: build-macos-app
+    cp -r macos/build/BansheeRun.app /Applications/
 
 # === All Platforms ===
 
@@ -145,6 +157,9 @@ prepare-packages:
     if [ -d "artifacts/macos-arm64" ]; then \
         cp artifacts/macos-arm64/*.a packages/macos/; \
         cp artifacts/macos-arm64/*.dylib packages/macos/; \
+    fi
+    if [ -d "macos/build/BansheeRun.app" ]; then \
+        cp -r macos/build/BansheeRun.app packages/macos/; \
     fi
     cd packages && zip -r bansheerun-macos.zip macos/
 

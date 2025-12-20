@@ -172,12 +172,12 @@ jobs:
           path: target/${{ matrix.target }}/release/*.a
           if-no-files-found: error
 
-  # Publish packages on main branch
+  # Build packages (runs on all PRs and pushes)
+  # Release only happens on main branch push
   publish:
     name: Publish Packages
     runs-on: ubuntu-latest
     needs: [build, build-android, build-ios]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
     steps:
@@ -200,49 +200,21 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R artifacts
 
-      - name: Copy native libraries to Android project
-        run: |
-          mkdir -p android/app/src/main/jniLibs/arm64-v8a
-          mkdir -p android/app/src/main/jniLibs/armeabi-v7a
-          if [ -d "artifacts/android-arm64-v8a" ]; then
-            cp artifacts/android-arm64-v8a/*.so android/app/src/main/jniLibs/arm64-v8a/
-          fi
-          if [ -d "artifacts/android-armeabi-v7a" ]; then
-            cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/
-          fi
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.2'
 
-      - name: Build Android APK
-        working-directory: android
-        run: gradle assembleRelease --no-daemon
-
-      - name: Prepare release packages
-        run: |
-          mkdir -p packages
-          # Copy APK
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/bansheerun.apk
-          # Create iOS package
-          mkdir -p packages/ios
-          if [ -d "artifacts/ios-arm64" ]; then
-            cp artifacts/ios-arm64/*.a packages/ios/
-          fi
-          if [ -d "artifacts/ios-x86_64-simulator" ]; then
-            cp artifacts/ios-x86_64-simulator/*.a packages/ios/
-          fi
-          if [ -d "artifacts/ios-arm64-simulator" ]; then
-            cp artifacts/ios-arm64-simulator/*.a packages/ios/
-          fi
-          cd packages && zip -r bansheerun-ios.zip ios/
+      - name: Build and prepare packages
+        run: just publish-prepare
 
       - name: Generate release version
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         id: version
         run: echo "version=v0.1.0-$(date +'%Y%m%d.%H%M%S')" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: just release ${{ steps.version.outputs.version }}

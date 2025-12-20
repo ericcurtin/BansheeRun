@@ -96,7 +96,42 @@ ci-full: check build-android build-ios
 
 # Build Android APK (requires native libs in jniLibs and JDK)
 build-apk:
-    cd android && ./gradlew assembleRelease --no-daemon
+    cd android && gradle assembleRelease --no-daemon
+
+# === Publish Pipeline ===
+
+# Copy native libraries from artifacts to Android jniLibs
+# Expects artifacts in ./artifacts/ directory
+copy-android-libs:
+    mkdir -p android/app/src/main/jniLibs/arm64-v8a
+    mkdir -p android/app/src/main/jniLibs/armeabi-v7a
+    if [ -d "artifacts/android-arm64-v8a" ]; then \
+        cp artifacts/android-arm64-v8a/*.so android/app/src/main/jniLibs/arm64-v8a/; \
+    fi
+    if [ -d "artifacts/android-armeabi-v7a" ]; then \
+        cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/; \
+    fi
+
+# Prepare release packages (APK + iOS zip)
+# Expects Android APK built and iOS artifacts in ./artifacts/
+prepare-packages:
+    mkdir -p packages
+    cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/bansheerun.apk
+    mkdir -p packages/ios
+    if [ -d "artifacts/ios-arm64" ]; then \
+        cp artifacts/ios-arm64/*.a packages/ios/; \
+    fi
+    if [ -d "artifacts/ios-x86_64-simulator" ]; then \
+        cp artifacts/ios-x86_64-simulator/*.a packages/ios/; \
+    fi
+    if [ -d "artifacts/ios-arm64-simulator" ]; then \
+        cp artifacts/ios-arm64-simulator/*.a packages/ios/; \
+    fi
+    cd packages && zip -r bansheerun-ios.zip ios/
+
+# Full publish preparation (everything except the release)
+# Run this on PRs to validate the entire publish pipeline
+publish-prepare: copy-android-libs build-apk prepare-packages
 
 # === Release ===
 

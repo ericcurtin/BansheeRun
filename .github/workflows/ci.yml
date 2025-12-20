@@ -211,11 +211,14 @@ jobs:
             cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/
           fi
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.2'
+
       - name: Build Android APK
         working-directory: android
-        run: |
-          chmod +x ./gradlew 2>/dev/null || true
-          ./gradlew assembleRelease --no-daemon || gradle assembleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon
 
       - name: Prepare release packages
         run: |

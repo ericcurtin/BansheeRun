@@ -43,7 +43,7 @@ impl RunRecord {
     /// ```
     pub fn new(id: String, name: String, coordinates: Vec<Point>, recorded_at: u64) -> Self {
         let total_distance_meters = Self::calculate_total_distance(&coordinates);
-        let duration_ms = coordinates.last().map(|p| p.timestamp_ms).unwrap_or(0);
+        let duration_ms = Self::calculate_duration(&coordinates);
 
         Self {
             id,
@@ -53,6 +53,16 @@ impl RunRecord {
             duration_ms,
             recorded_at,
         }
+    }
+
+    /// Calculates the duration in milliseconds from first to last point.
+    fn calculate_duration(points: &[Point]) -> u64 {
+        if points.len() < 2 {
+            return 0;
+        }
+        let first_ts = points.first().map(|p| p.timestamp_ms).unwrap_or(0);
+        let last_ts = points.last().map(|p| p.timestamp_ms).unwrap_or(0);
+        last_ts.saturating_sub(first_ts)
     }
 
     /// Calculates the average pace in minutes per kilometer.
@@ -191,5 +201,19 @@ mod tests {
         assert_eq!(record.duration_ms, 0);
         assert_eq!(record.average_pace_min_per_km(), 0.0);
         assert_eq!(record.average_speed_kmh(), 0.0);
+    }
+
+    #[test]
+    fn test_duration_with_nonzero_start() {
+        // Test that duration is correctly calculated when timestamps don't start at 0
+        let coords = vec![
+            Point::new(40.7128, -74.0060, 5000), // Start at 5 seconds
+            Point::new(40.7132, -74.0057, 10000),
+            Point::new(40.7136, -74.0054, 15000),
+        ];
+        let record = RunRecord::new("test-run".to_string(), "Test".to_string(), coords, 0);
+
+        // Duration should be 15000 - 5000 = 10000ms
+        assert_eq!(record.duration_ms, 10000);
     }
 }

@@ -102,6 +102,10 @@ build-macos-x86:
 build-macos-app:
     cd macos && ./build.sh
 
+# Build macOS .pkg installer
+build-macos-pkg: build-macos-app
+    cd macos && ./build-pkg.sh
+
 # Install macOS app to /Applications
 install-macos-app: build-macos-app
     cp -r macos/build/BansheeRun.app /Applications/
@@ -160,15 +164,9 @@ prepare-packages:
         cp artifacts/ios-arm64-simulator/*.a packages/ios/; \
     fi
     cd packages && zip -r bansheerun-ios.zip ios/
-    mkdir -p packages/macos
-    if [ -d "artifacts/macos-arm64" ]; then \
-        cp artifacts/macos-arm64/*.a packages/macos/; \
-        cp artifacts/macos-arm64/*.dylib packages/macos/; \
+    if [ -f "artifacts/macos-pkg/BansheeRun.pkg" ]; then \
+        cp artifacts/macos-pkg/BansheeRun.pkg packages/bansheerun-macos.pkg; \
     fi
-    if [ -d "macos/build/BansheeRun.app" ]; then \
-        cp -r macos/build/BansheeRun.app packages/macos/; \
-    fi
-    cd packages && zip -r bansheerun-macos.zip macos/
 
 # Full publish preparation (everything except the release)
 # Run this on PRs to validate the entire publish pipeline
@@ -192,4 +190,4 @@ release version:
         --generate-notes \
         packages/bansheerun.apk \
         packages/bansheerun-ios.zip \
-        packages/bansheerun-macos.zip
+        packages/bansheerun-macos.pkg

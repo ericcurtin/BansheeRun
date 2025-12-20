@@ -221,7 +221,7 @@ jobs:
         run: |
           mkdir -p packages
           # Copy APK
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/banshee-run.apk
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk packages/bansheerun.apk
           # Create iOS package
           mkdir -p packages/ios
           if [ -d "artifacts/ios-arm64" ]; then
@@ -233,7 +233,7 @@ jobs:
           if [ -d "artifacts/ios-arm64-simulator" ]; then
             cp artifacts/ios-arm64-simulator/*.a packages/ios/
           fi
-          cd packages && zip -r banshee-run-ios.zip ios/
+          cd packages && zip -r bansheerun-ios.zip ios/
 
       - name: Generate release version
         id: version

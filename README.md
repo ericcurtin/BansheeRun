@@ -9,45 +9,45 @@ A running app that motivates runners by comparing their current pace against the
 BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coordinate processing, and banshee comparisons are implemented in Rust, while platform-specific shells (Android/iOS) handle UI and system-level APIs (GPS, Audio, Notifications).
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                    Mobile App                          │
-├────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐     ┌─────────────────┐           │
-│  │   Android UI    │     │     iOS UI      │           │
-│  │   (Kotlin)      │     │    (Swift)      │           │
-│  └────────┬────────┘     └────────┬────────┘           │
-│           │                       │                    │
-│  ┌────────▼────────┐     ┌────────▼────────┐           │
-│  │ Android APIs    │     │   iOS APIs      │           │
-│  │ - GPS Service   │     │ - CoreLocation  │           │
-│  │ - AudioManager  │     │ - AVAudioSession│           │
-│  │ - ForegroundSvc │     │ - Background    │           │
-│  └────────┬────────┘     └────────┬────────┘           │
-│           │                       │                    │
-│           │       FFI Bridge      │                    │
-│           │   (JNI / uniffi-rs)   │                    │
-│           └───────────┬───────────┘                    │
-│                       │                                │
-│  ┌────────────────────▼────────────────────┐           │
-│  │          Rust Core Library              │           │
-│  │  ┌──────────────────────────────────┐   │           │
-│  │  │        BansheeSession            │   │           │
-│  │  │  - Pacing comparison logic       │   │           │
-│  │  │  - Distance calculations         │   │           │
-│  │  │  - Time interpolation            │   │           │
-│  │  └──────────────────────────────────┘   │           │
-│  │  ┌──────────────────────────────────┐   │           │
-│  │  │         RunRecord                │   │           │
-│  │  │  - Run persistence (JSON)        │   │           │
-│  │  │  - Pace/speed calculations       │   │           │
-│  │  └──────────────────────────────────┘   │           │
-│  │  ┌──────────────────────────────────┐   │           │
-│  │  │           Point                  │   │           │
-│  │  │  - GPS coordinates               │   │           │
-│  │  │  - Haversine distance            │   │           │
-│  │  └──────────────────────────────────┘   │           │
-│  └─────────────────────────────────────────┘           │
-└────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│                    Mobile App               │
+├─────────────────────────────────────────────┤
+│ ┌─────────────────┐     ┌─────────────────┐ │
+│ │   Android UI    │     │     iOS UI      │ │
+│ │   (Kotlin)      │     │    (Swift)      │ │
+│ └────────┬────────┘     └────────┬────────┘ │
+│          │                       │          │
+│ ┌────────▼────────┐     ┌────────▼────────┐ │
+│ │ Android APIs    │     │   iOS APIs      │ │
+│ │ - GPS Service   │     │ - CoreLocation  │ │
+│ │ - AudioManager  │     │ - AVAudioSession│ │
+│ │ - ForegroundSvc │     │ - Background    │ │
+│ └────────┬────────┘     └────────┬────────┘ │
+│          │                       │          │
+│          │       FFI Bridge      │          │
+│          │   (JNI / uniffi-rs)   │          │
+│          └───────────┬───────────┘          │
+│                      │                      │
+│ ┌────────────────────▼────────────────────┐ │
+│ │          Rust Core Library              │ │
+│ │  ┌──────────────────────────────────┐   │ │
+│ │  │        BansheeSession            │   │ │
+│ │  │  - Pacing comparison logic       │   │ │
+│ │  │  - Distance calculations         │   │ │
+│ │  │  - Time interpolation            │   │ │
+│ │  └──────────────────────────────────┘   │ │
+│ │  ┌──────────────────────────────────┐   │ │
+│ │  │         RunRecord                │   │ │
+│ │  │  - Run persistence (JSON)        │   │ │
+│ │  │  - Pace/speed calculations       │   │ │
+│ │  └──────────────────────────────────┘   │ │
+│ │  ┌──────────────────────────────────┐   │ │
+│ │  │           Point                  │   │ │
+│ │  │  - GPS coordinates               │   │ │
+│ │  │  - Haversine distance            │   │ │
+│ │  └──────────────────────────────────┘   │ │
+│ └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
 ```
 
 ## Rust Core Library

@@ -34,6 +34,7 @@ fmt:
 # Clean build artifacts
 clean:
     cargo clean
+    cd flutter_app && flutter clean
 
 # Install required Rust components
 setup:
@@ -42,7 +43,7 @@ setup:
 # Setup all targets for cross-compilation
 setup-all: setup setup-android
 
-# === Android Builds ===
+# === Android Builds (Rust library) ===
 
 # Install cargo-ndk for Android builds
 install-ndk:
@@ -74,65 +75,48 @@ ci: check
 # Full CI pipeline including cross-platform builds
 ci-full: check build-android
 
-# === Audio Assets ===
+# === Flutter App ===
 
-# Download scary audio files for Android
-download-audio-android:
-    mkdir -p android/app/src/main/res/raw
-    curl -L -o android/app/src/main/res/raw/ambient_scary.mp3 "https://github.com/user-attachments/files/24278753/ambient_scary.mp3"
-    curl -L -o android/app/src/main/res/raw/banshee_wail.mp3 "https://github.com/user-attachments/files/24278754/banshee_wail.mp3"
-    curl -L -o android/app/src/main/res/raw/heartbeat.mp3 "https://github.com/user-attachments/files/24278755/heartbeat.mp3"
-    curl -L -o android/app/src/main/res/raw/whispers.mp3 "https://github.com/user-attachments/files/24278756/whispers.mp3"
+# Get Flutter dependencies
+flutter-pub-get:
+    cd flutter_app && flutter pub get
 
-# Download all audio assets
-download-audio: download-audio-android
+# Analyze Flutter code
+flutter-analyze:
+    cd flutter_app && flutter analyze
 
-# === Android APK Build ===
+# Build Flutter APK (debug)
+flutter-build-debug: flutter-pub-get
+    cd flutter_app && flutter build apk --debug
 
-# Build Android APK (requires native libs in jniLibs and JDK)
-build-apk: download-audio-android
-    cd android && gradle assembleRelease --no-daemon
+# Build Flutter APK (release)
+flutter-build-release: flutter-pub-get
+    cd flutter_app && flutter build apk --release
+
+# Build Flutter app bundle (for Play Store)
+flutter-build-appbundle: flutter-pub-get
+    cd flutter_app && flutter build appbundle --release
+
+# Run Flutter app
+flutter-run:
+    cd flutter_app && flutter run
 
 # === Publish Pipeline ===
 
-# Create Android debug keystore if it doesn't exist
-create-android-keystore:
-    mkdir -p ~/.android
-    if [ ! -f ~/.android/debug.keystore ]; then \
-        keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"; \
-    fi
-
-# Copy native libraries from artifacts to Android jniLibs
-# Expects artifacts in ./artifacts/ directory
-copy-android-libs:
-    mkdir -p android/app/src/main/jniLibs/arm64-v8a
-    mkdir -p android/app/src/main/jniLibs/armeabi-v7a
-    if [ -d "artifacts/android-arm64-v8a" ]; then \
-        cp artifacts/android-arm64-v8a/*.so android/app/src/main/jniLibs/arm64-v8a/; \
-    fi
-    if [ -d "artifacts/android-armeabi-v7a" ]; then \
-        cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/; \
-    fi
-
 # Prepare release packages (APK)
-# Expects Android APK built
-prepare-packages:
+prepare-packages: flutter-build-release
     mkdir -p packages
-    cp android/app/build/outputs/apk/release/app-release.apk packages/bansheerun.apk
+    cp flutter_app/build/app/outputs/flutter-apk/app-release.apk packages/bansheerun.apk
 
 # Full publish preparation (everything except the release)
 # Run this on PRs to validate the entire publish pipeline
-publish-prepare: copy-android-libs create-android-keystore build-apk prepare-packages
+publish-prepare: flutter-build-release prepare-packages
 
 # === Release ===
 
 # Generate a release version string
 generate-version:
     @echo "v0.1.0-$(date +'%Y%m%d.%H%M%S')"
-
-# Show structure of artifacts directory (for debugging)
-show-artifacts:
-    ls -R artifacts
 
 # List packages for upload (used by CI to verify packages exist)
 list-packages:

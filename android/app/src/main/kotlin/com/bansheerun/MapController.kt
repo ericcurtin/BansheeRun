@@ -146,6 +146,13 @@ class MapController(
         wanderingBansheeOverlay?.setWanderingVisible(visible)
     }
 
+    /**
+     * Set the activity type for the wandering banshee
+     */
+    fun setWanderingBansheeActivityType(activityType: BansheeLib.ActivityType) {
+        wanderingBansheeOverlay?.setActivityType(activityType)
+    }
+
     fun setInitialPosition(lat: Double, lon: Double) {
         val point = GeoPoint(lat, lon)
         runnerMarker?.position = point

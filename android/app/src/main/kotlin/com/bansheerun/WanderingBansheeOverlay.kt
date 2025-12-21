@@ -23,6 +23,7 @@ class WanderingBansheeOverlay(
 ) : Overlay() {
 
     private var bansheeDrawable: Drawable? = null
+    private var currentActivityType: BansheeLib.ActivityType = BansheeLib.ActivityType.RUN
     private var currentPosition: GeoPoint? = null
     private var centerPosition: GeoPoint? = null
 
@@ -60,7 +61,31 @@ class WanderingBansheeOverlay(
     }
 
     init {
-        bansheeDrawable = ContextCompat.getDrawable(context, R.drawable.ic_wandering_banshee)
+        updateBansheeDrawable()
+    }
+
+    /**
+     * Update the banshee drawable based on the current activity type
+     */
+    private fun updateBansheeDrawable() {
+        val drawableRes = when (currentActivityType) {
+            BansheeLib.ActivityType.RUN -> R.drawable.ic_banshee_run
+            BansheeLib.ActivityType.WALK -> R.drawable.ic_banshee_walk
+            BansheeLib.ActivityType.CYCLE -> R.drawable.ic_banshee_cycle
+            BansheeLib.ActivityType.ROLLER_SKATE -> R.drawable.ic_banshee_skate
+        }
+        bansheeDrawable = ContextCompat.getDrawable(context, drawableRes)
+    }
+
+    /**
+     * Set the activity type, which changes the banshee appearance
+     */
+    fun setActivityType(activityType: BansheeLib.ActivityType) {
+        if (currentActivityType != activityType) {
+            currentActivityType = activityType
+            updateBansheeDrawable()
+            mapView.invalidate()
+        }
     }
 
     private val animationRunnable = object : Runnable {

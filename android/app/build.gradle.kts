@@ -82,8 +82,66 @@ val generateAppIcons by tasks.registering {
     }
 }
 
+val generateBansheeIcons by tasks.registering {
+    val resDir = file("src/main/res")
+
+    // Banshee icon URLs from GitHub (already circular)
+    val bansheeUrls = mapOf(
+        "ic_banshee_run" to "https://github.com/user-attachments/assets/e9029cec-92f5-4888-b173-34ce26ca0d71",
+        "ic_banshee_walk" to "https://github.com/user-attachments/assets/7c9acac0-acb6-48c7-8793-bccaeda03790",
+        "ic_banshee_skate" to "https://github.com/user-attachments/assets/cfd25ce8-677e-4622-86c8-c55532548490",
+        "ic_banshee_cycle" to "https://github.com/user-attachments/assets/2f0f5e3f-4d1b-478f-bf83-ebffa54cdbf2"
+    )
+
+    outputs.dir(resDir.resolve("drawable-mdpi"))
+    outputs.dir(resDir.resolve("drawable-hdpi"))
+    outputs.dir(resDir.resolve("drawable-xhdpi"))
+    outputs.dir(resDir.resolve("drawable-xxhdpi"))
+    outputs.dir(resDir.resolve("drawable-xxxhdpi"))
+
+    doLast {
+        val tmpDir = File(System.getProperty("java.io.tmpdir"), "banshee-activity-icons")
+        tmpDir.mkdirs()
+
+        // Check if sips (macOS) or convert (ImageMagick) is available
+        val hasSips = try {
+            exec { commandLine("which", "sips"); isIgnoreExitValue = true }.exitValue == 0
+        } catch (e: Exception) { false }
+
+        val hasConvert = try {
+            exec { commandLine("which", "convert"); isIgnoreExitValue = true }.exitValue == 0
+        } catch (e: Exception) { false }
+
+        // 72dp base size for banshee icons
+        val sizes = mapOf("mdpi" to 72, "hdpi" to 108, "xhdpi" to 144, "xxhdpi" to 216, "xxxhdpi" to 288)
+
+        bansheeUrls.forEach { (name, url) ->
+            val sourceFile = File(tmpDir, "$name.png")
+
+            // Download the image
+            exec {
+                commandLine("curl", "-L", "-o", sourceFile.absolutePath, url)
+            }
+
+            // Generate for each density
+            sizes.forEach { (density, size) ->
+                val dir = resDir.resolve("drawable-$density").apply { mkdirs() }
+                val outFile = dir.resolve("$name.png")
+
+                if (hasSips) {
+                    exec { commandLine("sips", "-z", size.toString(), size.toString(), sourceFile.absolutePath, "--out", outFile.absolutePath) }
+                } else if (hasConvert) {
+                    exec { commandLine("convert", sourceFile.absolutePath, "-resize", "${size}x${size}", outFile.absolutePath) }
+                } else {
+                    throw GradleException("Neither sips (macOS) nor convert (ImageMagick) found. Please install ImageMagick.")
+                }
+            }
+        }
+    }
+}
+
 tasks.named("preBuild") {
-    dependsOn(generateAppIcons)
+    dependsOn(generateAppIcons, generateBansheeIcons)
 }
 
 android {

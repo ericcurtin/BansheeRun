@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
 
     private val startProximityThreshold = 30.0 // meters
     private val endProximityThreshold = 30.0 // meters
+    private val minCoordinatesForActivity = 4
 
     private lateinit var activityRepository: ActivityRepository
 
@@ -400,7 +401,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Save activity if we have enough data
-        if (coordinates.size >= 2) {
+        if (coordinates.size >= minCoordinatesForActivity) {
             saveActivity(coordinates, totalDistance, durationMs)
         }
 
@@ -514,7 +515,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val jsonObject = org.json.JSONObject(activityJson)
             val coordinates = jsonObject.getJSONArray("coordinates")
-            if (coordinates.length() >= 2) {
+            if (coordinates.length() >= minCoordinatesForActivity) {
                 val firstCoord = coordinates.getJSONObject(0)
                 val lastCoord = coordinates.getJSONObject(coordinates.length() - 1)
 

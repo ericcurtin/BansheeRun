@@ -21,18 +21,18 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Generated Android app icons (built from README logo)
-android/app/src/main/res/mipmap-mdpi/
-android/app/src/main/res/mipmap-hdpi/
-android/app/src/main/res/mipmap-xhdpi/
-android/app/src/main/res/mipmap-xxhdpi/
-android/app/src/main/res/mipmap-xxxhdpi/
-android/app/src/main/res/drawable-mdpi/
-android/app/src/main/res/drawable-hdpi/
-android/app/src/main/res/drawable-xhdpi/
-android/app/src/main/res/drawable-xxhdpi/
-android/app/src/main/res/drawable-xxxhdpi/
+# Flutter
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/build/
+flutter_app/.packages
+flutter_app/.pub-cache/
+flutter_app/.pub/
+flutter_app/ios/
+flutter_app/android/.gradle/
+flutter_app/android/local.properties
+flutter_app/android/app/build/
 
-# Audio files (downloaded at build time)
-android/app/src/main/res/raw/
-macos/BansheeRun/Resources/*.mp3
+# macOS not supported
+macos/

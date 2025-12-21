@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 jobs:
-  # Build and test on Linux and Windows
+  # Build and test Rust library on Linux and Windows
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -48,69 +48,46 @@ jobs:
       - name: Build, test, lint, and format check
         run: just check
 
-  # Build for Android (arm64-v8a and armeabi-v7a)
-  build-android:
-    name: Build Android (${{ matrix.target }})
+  # Build Flutter app and create APK
+  build-flutter:
+    name: Build Flutter App
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: aarch64-linux-android
-            arch: arm64-v8a
-            just-target: build-android-arm64
-          - target: armv7-linux-androideabi
-            arch: armeabi-v7a
-            just-target: build-android-arm32
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          targets: ${{ matrix.target }}
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
 
       - name: Install just
         uses: extractions/setup-just@v2
 
-      - name: Install cargo-ndk
-        run: just install-ndk
+      - name: Get Flutter dependencies
+        run: just flutter-pub-get
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r26d
+      - name: Analyze Flutter code
+        run: just flutter-analyze
+        continue-on-error: true  # Allow info-level warnings
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-android-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-android-${{ matrix.target }}-cargo-
+      - name: Build Flutter APK
+        run: just flutter-build-release
 
-      - name: Build for Android
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: just ${{ matrix.just-target }}
-
-      - name: Upload Android artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/*.so
+          name: bansheerun-apk
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
-  # Build packages (runs on all PRs and pushes)
-  # Release only happens on main branch push
+  # Publish release (only on main branch push)
   publish:
-    name: Publish Packages
+    name: Publish Release
     runs-on: ubuntu-latest
-    needs: [build, build-android]
+    needs: [build, build-flutter]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: write
     steps:
@@ -119,43 +96,19 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@v2
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Download all artifacts
+      - name: Download APK artifact
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: bansheerun-apk
+          path: packages
 
-      - name: Display structure of downloaded files
-        run: just show-artifacts
-
-      - name: Install ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.2'
-
-      - name: Build and prepare packages
-        run: just publish-prepare
+      - name: Rename APK
+        run: mv packages/app-release.apk packages/bansheerun.apk
 
       - name: List packages
         run: just list-packages
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bansheerun-apk
-          path: packages/bansheerun.apk
-          if-no-files-found: error
-
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: just release $(just generate-version)

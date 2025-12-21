@@ -13,10 +13,19 @@ A running app that motivates runners by comparing their current pace against the
 
 ## The banshee sounds
 
-[whispers.mp3](https://github.com/user-attachments/files/24278756/whispers.mp3)
-[heartbeat.mp3](https://github.com/user-attachments/files/24278755/heartbeat.mp3)
-[banshee_wail.mp3](https://github.com/user-attachments/files/24278754/banshee_wail.mp3)
-[ambient_scary.mp3](https://github.com/user-attachments/files/24278753/ambient_scary.mp3)
+Audio files are downloaded at build time. To download manually:
+
+```bash
+just download-audio           # Download for all platforms
+just download-audio-android   # Android only
+just download-audio-macos     # macOS/iOS only
+```
+
+Sources (CC BY-NC 4.0 / Attribution 3.0):
+- [ambient_scary.mp3](https://github.com/user-attachments/files/24278753/ambient_scary.mp3) - Eerie wind drone ambience
+- [banshee_wail.mp3](https://github.com/user-attachments/files/24278754/banshee_wail.mp3) - Banshee scream
+- [heartbeat.mp3](https://github.com/user-attachments/files/24278755/heartbeat.mp3) - Spooky heartbeat
+- [whispers.mp3](https://github.com/user-attachments/files/24278756/whispers.mp3) - Creepy whispers
 
 ## Architecture
 

@@ -48,6 +48,12 @@ cp "$SCRIPT_DIR/BansheeRun/Info.plist" "$APP_BUNDLE/Contents/"
 # Create PkgInfo
 echo "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
 
+# Copy audio resources
+echo "Copying audio resources..."
+if [ -d "$SCRIPT_DIR/BansheeRun/Resources" ]; then
+    cp "$SCRIPT_DIR/BansheeRun/Resources/"*.mp3 "$APP_BUNDLE/Contents/Resources/" 2>/dev/null || true
+fi
+
 # Compile Swift sources
 echo "Compiling Swift sources..."
 SWIFT_SOURCES=(
@@ -57,6 +63,7 @@ SWIFT_SOURCES=(
     "$SCRIPT_DIR/BansheeRun/LocationManager.swift"
     "$SCRIPT_DIR/BansheeRun/ActivityRepository.swift"
     "$SCRIPT_DIR/BansheeRun/ActivityListView.swift"
+    "$SCRIPT_DIR/BansheeRun/BansheeAudioManager.swift"
 )
 
 swiftc \
@@ -70,6 +77,7 @@ swiftc \
     -framework CoreLocation \
     -framework SwiftUI \
     -framework AppKit \
+    -framework AVFoundation \
     -o "$APP_BUNDLE/Contents/MacOS/$APP_NAME" \
     "${SWIFT_SOURCES[@]}"
 

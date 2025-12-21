@@ -99,7 +99,7 @@ build-macos-x86:
     cargo build --release --target x86_64-apple-darwin
 
 # Build macOS app bundle
-build-macos-app:
+build-macos-app: download-audio-macos
     cd macos && ./build.sh
 
 # Build macOS .pkg installer
@@ -121,10 +121,31 @@ ci: check
 # Full CI pipeline including cross-platform builds
 ci-full: check build-android build-ios build-macos
 
+# === Audio Assets ===
+
+# Download scary audio files for Android
+download-audio-android:
+    mkdir -p android/app/src/main/res/raw
+    curl -L -o android/app/src/main/res/raw/ambient_scary.mp3 "https://github.com/user-attachments/files/24278753/ambient_scary.mp3"
+    curl -L -o android/app/src/main/res/raw/banshee_wail.mp3 "https://github.com/user-attachments/files/24278754/banshee_wail.mp3"
+    curl -L -o android/app/src/main/res/raw/heartbeat.mp3 "https://github.com/user-attachments/files/24278755/heartbeat.mp3"
+    curl -L -o android/app/src/main/res/raw/whispers.mp3 "https://github.com/user-attachments/files/24278756/whispers.mp3"
+
+# Download scary audio files for macOS/iOS
+download-audio-macos:
+    mkdir -p macos/BansheeRun/Resources
+    curl -L -o macos/BansheeRun/Resources/ambient_scary.mp3 "https://github.com/user-attachments/files/24278753/ambient_scary.mp3"
+    curl -L -o macos/BansheeRun/Resources/banshee_wail.mp3 "https://github.com/user-attachments/files/24278754/banshee_wail.mp3"
+    curl -L -o macos/BansheeRun/Resources/heartbeat.mp3 "https://github.com/user-attachments/files/24278755/heartbeat.mp3"
+    curl -L -o macos/BansheeRun/Resources/whispers.mp3 "https://github.com/user-attachments/files/24278756/whispers.mp3"
+
+# Download all audio assets
+download-audio: download-audio-android download-audio-macos
+
 # === Android APK Build ===
 
 # Build Android APK (requires native libs in jniLibs and JDK)
-build-apk:
+build-apk: download-audio-android
     cd android && gradle assembleRelease --no-daemon
 
 # === Publish Pipeline ===

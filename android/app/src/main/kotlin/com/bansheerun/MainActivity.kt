@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private lateinit var mapController: MapController
     private lateinit var weatherOverlay: BansheeWeatherOverlay
+    private lateinit var audioManager: BansheeAudioManager
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var bansheeModeStatus: TextView
 
@@ -199,6 +200,7 @@ class MainActivity : AppCompatActivity() {
         mapController.initialize()
 
         weatherOverlay = findViewById(R.id.weatherOverlay)
+        audioManager = BansheeAudioManager(this)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestInitialLocation()
@@ -274,6 +276,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         mapController.onDestroy()
+        audioManager.release()
     }
 
     private fun requestInitialLocation() {
@@ -389,6 +392,7 @@ class MainActivity : AppCompatActivity() {
         bansheeModeStatus.visibility = android.view.View.GONE
         updateStartButtonText()
         weatherOverlay.hide()
+        audioManager.stopScaryAudio()
 
         // Re-enable activity type selection
         for (i in 0 until activityTypeGroup.childCount) {
@@ -479,14 +483,23 @@ class MainActivity : AppCompatActivity() {
             timeDiffText.text = ""
         }
 
-        // Show banshee weather effects when falling behind
+        // Show banshee weather and audio effects when falling behind
         when (status) {
             BansheeLib.PacingStatus.BEHIND -> {
                 // Intensity increases based on how far behind (more seconds behind = stronger effect)
                 val intensity = (kotlin.math.abs(timeDiffMs) / 30000f).coerceIn(0.3f, 1f)
                 weatherOverlay.setIntensity(intensity)
+                audioManager.setIntensity(intensity)
+
+                // Trigger banshee wail when very far behind (>15 seconds)
+                if (kotlin.math.abs(timeDiffMs) > 15000) {
+                    audioManager.playBansheeWail()
+                }
             }
-            else -> weatherOverlay.hide()
+            else -> {
+                weatherOverlay.hide()
+                audioManager.stopScaryAudio()
+            }
         }
     }
 

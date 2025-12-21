@@ -118,7 +118,7 @@ struct ContentView: View {
                         VStack {
                             Image(systemName: "trophy")
                                 .font(.title2)
-                            Text("PBs")
+                            Text("Personal Bests")
                                 .font(.caption)
                         }
                     }

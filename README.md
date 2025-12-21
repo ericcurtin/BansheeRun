@@ -11,6 +11,13 @@ A running app that motivates runners by comparing their current pace against the
 <img width="288" height="288" alt="ic_banshee_skate" src="https://github.com/user-attachments/assets/cfd25ce8-677e-4622-86c8-c55532548490" />
 <img width="288" height="288" alt="ic_banshee_cycle" src="https://github.com/user-attachments/assets/2f0f5e3f-4d1b-478f-bf83-ebffa54cdbf2" />
 
+## The banshee sounds
+
+[whispers.mp3](https://github.com/user-attachments/files/24278756/whispers.mp3)
+[heartbeat.mp3](https://github.com/user-attachments/files/24278755/heartbeat.mp3)
+[banshee_wail.mp3](https://github.com/user-attachments/files/24278754/banshee_wail.mp3)
+[ambient_scary.mp3](https://github.com/user-attachments/files/24278753/ambient_scary.mp3)
+
 ## Architecture
 
 BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coordinate processing, and banshee comparisons are implemented in Rust, while platform-specific shells (Android/iOS) handle UI and system-level APIs (GPS, Audio, Notifications).

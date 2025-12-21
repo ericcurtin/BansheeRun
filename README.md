@@ -4,6 +4,13 @@
 
 A running app that motivates runners by comparing their current pace against their "banshee" (best run) and plays audio cues when falling behind.
 
+## The banshees
+
+<img width="288" height="288" alt="ic_banshee_run" src="https://github.com/user-attachments/assets/e9029cec-92f5-4888-b173-34ce26ca0d71" />
+<img width="288" height="288" alt="ic_banshee_walk" src="https://github.com/user-attachments/assets/7c9acac0-acb6-48c7-8793-bccaeda03790" />
+<img width="288" height="288" alt="ic_banshee_skate" src="https://github.com/user-attachments/assets/cfd25ce8-677e-4622-86c8-c55532548490" />
+<img width="288" height="288" alt="ic_banshee_cycle" src="https://github.com/user-attachments/assets/2f0f5e3f-4d1b-478f-bf83-ebffa54cdbf2" />
+
 ## Architecture
 
 BansheeRun uses a **Shared Core** architecture where all pacing logic, GPS coordinate processing, and banshee comparisons are implemented in Rust, while platform-specific shells (Android/iOS) handle UI and system-level APIs (GPS, Audio, Notifications).

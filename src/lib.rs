@@ -20,9 +20,6 @@ pub mod run_record;
 #[cfg(target_os = "android")]
 mod android;
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-mod macos;
-
 pub use activity::{Activity, ActivityIndex, ActivitySummary, ActivityType};
 pub use banshee_session::BansheeSession;
 pub use pb_calculator::{calculate_speed_kmh, format_pace, PBCalculator};

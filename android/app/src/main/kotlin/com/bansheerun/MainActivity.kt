@@ -149,6 +149,8 @@ class MainActivity : AppCompatActivity() {
                 else -> BansheeLib.ActivityType.RUN
             }
             updateStartButtonText()
+            // Update the wandering banshee to match the selected activity type
+            mapController.setWanderingBansheeActivityType(selectedActivityType)
         }
 
         startStopButton.setOnClickListener {

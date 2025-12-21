@@ -13,8 +13,8 @@ let package = Package(
         .executableTarget(
             name: "BansheeRun",
             path: "BansheeRun",
-            exclude: ["banshee_run.h", "Info.plist", "BansheeRun.entitlements", "BansheeRun-Bridging-Header.h"],
-            sources: ["BansheeRunApp.swift", "ContentView.swift", "BansheeLib.swift", "LocationManager.swift", "ActivityRepository.swift", "ActivityListView.swift"],
+            exclude: ["banshee_run.h", "Info.plist", "BansheeRun.entitlements", "BansheeRun-Bridging-Header.h", "Resources"],
+            sources: ["BansheeRunApp.swift", "ContentView.swift", "BansheeLib.swift", "LocationManager.swift", "ActivityRepository.swift", "ActivityListView.swift", "BansheeAudioManager.swift"],
             swiftSettings: [
                 .unsafeFlags([
                     "-import-objc-header", "BansheeRun/BansheeRun-Bridging-Header.h"
@@ -26,7 +26,8 @@ let package = Package(
                     "-L", "../target/aarch64-apple-darwin/release",
                     "-lbanshee_run"
                 ]),
-                .linkedFramework("CoreLocation")
+                .linkedFramework("CoreLocation"),
+                .linkedFramework("AVFoundation")
             ]
         )
     ]

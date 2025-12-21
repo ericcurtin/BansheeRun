@@ -4,6 +4,7 @@ import UserNotifications
 
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
+    @StateObject private var audioManager = BansheeAudioManager()
     @ObservedObject var repository = ActivityRepository.shared
 
     @State private var isRunning = false
@@ -286,6 +287,7 @@ struct ContentView: View {
         locationManager.stopTracking()
         waitingForStart = false
         bansheeGameActive = false
+        audioManager.stopScaryAudio()
 
         // Save activity if we have coordinates
         if recordedCoordinates.count >= 2 {
@@ -371,6 +373,21 @@ struct ContentView: View {
 
         // Handle banshee mode end point detection
         if bansheeGameActive, let endPoint = bansheeEndPoint {
+            // Trigger scary audio effects when falling behind
+            if pacingStatus == .behind {
+                // Intensity increases based on how far behind (more seconds behind = stronger effect)
+                let intensity = min(1.0, Float(abs(timeDifferenceMs)) / 30000.0)
+                let clampedIntensity = max(0.3, intensity)
+                audioManager.setIntensity(clampedIntensity)
+
+                // Trigger banshee wail when very far behind (>15 seconds)
+                if abs(timeDifferenceMs) > 15000 {
+                    audioManager.playBansheeWail()
+                }
+            } else {
+                audioManager.stopScaryAudio()
+            }
+
             let distanceToEnd = distanceBetween(lat1: lat, lon1: lon, lat2: endPoint.lat, lon2: endPoint.lon)
             if distanceToEnd <= endProximityThreshold {
                 finishBansheeRace()

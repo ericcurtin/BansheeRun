@@ -5,127 +5,104 @@
     android:viewportWidth="72"
     android:viewportHeight="72">
 
-    <!-- Hair - dramatic sweeping flow upward and back (outermost layer) -->
+    <!-- HAIR - Big dramatic sweep going up and back (outermost) -->
     <path
-        android:fillColor="#4477AABB"
-        android:pathData="M28,28 Q20,20 14,10 Q10,4 16,6 Q24,8 30,16 Q28,22 28,28z"/>
+        android:fillColor="#3366AAAA"
+        android:pathData="M32,36 Q22,30 12,18 Q6,8 4,4 Q8,2 16,8 Q26,18 32,30z"/>
 
-    <!-- Hair - second sweep -->
+    <!-- HAIR - Second big sweep -->
     <path
-        android:fillColor="#5588BBCC"
-        android:pathData="M30,30 Q24,24 20,14 Q18,8 24,10 Q30,14 32,22 Q30,26 30,30z"/>
+        android:fillColor="#4488BBBB"
+        android:pathData="M34,38 Q26,32 18,20 Q12,10 14,6 Q20,6 26,16 Q34,28 36,36z"/>
 
-    <!-- Hair - flowing up and curling back -->
+    <!-- HAIR - Third sweep curving up -->
     <path
-        android:fillColor="#6699CCCC"
-        android:pathData="M32,32 Q28,26 26,18 Q24,12 30,14 Q36,18 36,26 Q34,30 32,32z"/>
+        android:fillColor="#5599CCCC"
+        android:pathData="M36,40 Q30,34 24,22 Q20,12 24,10 Q30,12 34,24 Q38,34 38,40z"/>
 
-    <!-- Hair - top curl -->
+    <!-- HAIR - Inner sweep near head -->
     <path
-        android:fillColor="#5588BBBB"
-        android:pathData="M34,26 Q30,18 32,10 Q36,6 40,12 Q42,20 38,26z"/>
+        android:fillColor="#66AADDCC"
+        android:pathData="M38,42 Q34,36 32,26 Q30,18 34,18 Q40,22 40,34 Q40,40 38,42z"/>
 
-    <!-- Hair strand flowing far back -->
+    <!-- HAIR - Top flowing strand -->
     <path
-        android:fillColor="#3366AA99"
-        android:pathData="M26,26 Q18,18 10,14 Q4,12 6,8 Q12,6 20,12 Q26,18 26,26z"/>
+        android:fillColor="#4488BBAA"
+        android:pathData="M36,34 Q34,24 38,14 Q42,8 46,12 Q44,20 40,30z"/>
 
-    <!-- Head - tilted forward -->
+    <!-- HEAD - Small, tilted forward -->
     <path
-        android:fillColor="#CCEEFFEE"
-        android:pathData="M38,30 Q44,28 48,32 Q50,38 46,42 Q40,44 36,40 Q34,34 38,30z"/>
+        android:fillColor="#DDEEFFEE"
+        android:pathData="M42,38 Q48,36 52,40 Q54,46 50,50 Q44,52 40,48 Q38,42 42,38z"/>
 
-    <!-- Face - pale -->
+    <!-- FACE -->
     <path
         android:fillColor="#EEFFFFFF"
-        android:pathData="M40,32 Q44,30 46,34 Q48,38 44,40 Q40,42 38,38 Q36,34 40,32z"/>
+        android:pathData="M44,40 Q50,38 52,44 Q52,48 48,50 Q44,50 42,46 Q42,42 44,40z"/>
 
-    <!-- Eye sockets -->
+    <!-- Eyes - dark hollows -->
     <path
-        android:fillColor="#55445566"
-        android:pathData="M40,34 Q42,33 43,35 Q42,37 40,36z"/>
+        android:fillColor="#44334455"
+        android:pathData="M45,43 Q47,42 48,44 Q47,46 45,45z"/>
     <path
-        android:fillColor="#55445566"
-        android:pathData="M45,35 Q47,34 47,36 Q46,38 44,37z"/>
+        android:fillColor="#44334455"
+        android:pathData="M50,44 Q52,43 52,45 Q51,47 49,46z"/>
 
-    <!-- Eye glows - cyan -->
+    <!-- Eye glows -->
     <path
-        android:fillColor="#EE66FFFF"
-        android:pathData="M41,35 L42,34.5 L42,35.5z"/>
+        android:fillColor="#EE88FFFF"
+        android:pathData="M46,44 L47,43.5 L47,44.5z"/>
     <path
-        android:fillColor="#EE66FFFF"
-        android:pathData="M45.5,35.5 L46.5,35 L46.5,36z"/>
+        android:fillColor="#EE88FFFF"
+        android:pathData="M50.5,44.5 L51.5,44 L51.5,45z"/>
 
-    <!-- Open mouth - wailing -->
+    <!-- Mouth - wailing -->
     <path
-        android:fillColor="#66334455"
-        android:pathData="M42,39 Q44,38 45,40 Q44,42 42,42 Q40,41 42,39z"/>
+        android:fillColor="#55223344"
+        android:pathData="M46,47 Q48,46 50,48 Q49,50 47,50 Q45,49 46,47z"/>
 
-    <!-- Neck and upper body - leaning forward -->
-    <path
-        android:fillColor="#BBDDEEDD"
-        android:pathData="M44,42 Q48,44 52,42 Q56,44 56,50 Q54,56 48,58 Q44,56 44,50 Q42,46 44,42z"/>
-
-    <!-- Torso - slim feminine shape leaning forward -->
-    <path
-        android:fillColor="#99CCDDCC"
-        android:pathData="M48,50 Q54,48 58,52 Q62,58 58,64 Q52,68 46,66 Q42,62 44,56 Q46,52 48,50z"/>
-
-    <!-- Chest area -->
+    <!-- ARM reaching forward -->
     <path
         android:fillColor="#AADDEEEE"
-        android:pathData="M50,52 Q54,50 56,54 Q56,58 52,60 Q48,58 50,54z"/>
+        android:pathData="M52,46 Q58,42 66,40 Q72,42 70,46 Q64,48 56,50z"/>
 
-    <!-- Front arm reaching forward -->
-    <path
-        android:fillColor="#AADDEEEE"
-        android:pathData="M52,44 Q58,40 64,38 Q70,38 70,42 Q68,46 62,46 Q56,48 52,44z"/>
-
-    <!-- Front hand with fingers reaching -->
+    <!-- Hand -->
     <path
         android:fillColor="#CCEEFFFF"
-        android:pathData="M64,38 Q68,36 72,38 Q72,42 68,42 Q64,42 64,38z"/>
-    <!-- Fingers -->
-    <path
-        android:fillColor="#DDEEFFFF"
-        android:pathData="M68,36 Q70,34 71,36 Q70,38 68,36z"/>
-    <path
-        android:fillColor="#DDEEFFFF"
-        android:pathData="M70,38 Q72,36 72,39 Q71,40 70,38z"/>
+        android:pathData="M66,40 Q70,38 72,42 Q70,46 66,44z"/>
 
-    <!-- Back arm trailing behind -->
+    <!-- BODY - Slim flowing torso, almost horizontal -->
     <path
-        android:fillColor="#7799BBAA"
-        android:pathData="M44,48 Q38,52 30,54 Q24,54 26,50 Q32,48 40,46 Q44,46 44,48z"/>
+        android:fillColor="#88BBDDDD"
+        android:pathData="M48,50 Q56,48 62,52 Q66,58 62,64 Q54,68 46,64 Q42,58 46,52z"/>
 
-    <!-- Wispy lower body - main trail -->
+    <!-- Body inner glow -->
     <path
-        android:fillColor="#7799CCBB"
-        android:pathData="M46,62 Q42,66 36,68 Q28,70 22,68 Q16,66 18,62 Q24,60 32,62 Q40,62 46,62z"/>
+        android:fillColor="#AADDEEEE"
+        android:pathData="M50,52 Q56,50 60,54 Q62,60 58,64 Q52,66 48,62 Q46,56 50,52z"/>
 
-    <!-- Lower wisp - fading trail 1 -->
+    <!-- WISPY LOWER BODY - Main trail flowing back -->
     <path
-        android:fillColor="#5577AA99"
-        android:pathData="M32,66 Q24,68 16,68 Q8,66 10,62 Q18,62 26,64 Q32,64 32,66z"/>
+        android:fillColor="#6699CCBB"
+        android:pathData="M46,62 Q38,66 28,68 Q18,68 12,64 Q16,60 26,62 Q38,62 46,62z"/>
 
-    <!-- Lower wisp - fading trail 2 -->
+    <!-- Wisp trail 2 -->
     <path
-        android:fillColor="#44669988"
-        android:pathData="M22,66 Q14,68 6,66 Q2,64 6,62 Q12,62 18,64z"/>
+        android:fillColor="#5588BBAA"
+        android:pathData="M28,66 Q18,70 8,68 Q4,64 10,62 Q20,64 28,66z"/>
 
-    <!-- Wisp tendril 1 -->
+    <!-- Wisp trail 3 - fading -->
     <path
-        android:fillColor="#33558877"
-        android:pathData="M14,66 Q8,68 4,66 Q4,64 10,64z"/>
+        android:fillColor="#44779999"
+        android:pathData="M16,68 Q8,72 2,68 Q4,64 12,66z"/>
 
-    <!-- Wisp tendril 2 -->
+    <!-- Small wisp tendrils -->
     <path
-        android:fillColor="#33558877"
-        android:pathData="M26,68 Q20,72 14,70 Q16,68 22,68z"/>
+        android:fillColor="#33668888"
+        android:pathData="M8,68 Q2,70 0,66 Q4,64 8,68z"/>
 
-    <!-- Wisp tendril 3 -->
     <path
-        android:fillColor="#22447766"
-        android:pathData="M18,70 Q12,72 8,70 Q10,68 16,68z"/>
+        android:fillColor="#33668888"
+        android:pathData="M22,70 Q14,72 10,70 Q14,68 20,68z"/>
 
 </vector>

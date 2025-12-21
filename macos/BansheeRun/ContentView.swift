@@ -24,7 +24,13 @@ struct ContentView: View {
     @State private var showingPersonalBests = false
     @State private var showingNewPBAlert = false
     @State private var newPBs: [PersonalBest] = []
-    @State private var showingBansheeSelector = false
+
+    // Banshee mode state
+    @State private var bansheeActivityId: String? = nil
+    @State private var bansheeStartPoint: (lat: Double, lon: Double)? = nil
+    @State private var bansheeEndPoint: (lat: Double, lon: Double)? = nil
+    @State private var waitingForStart = false
+    @State private var bansheeGameActive = false
 
     var body: some View {
         NavigationStack {
@@ -82,13 +88,16 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(isRunning ? .red : .green)
 
-                // Select Banshee button
-                Button(action: { showingBansheeSelector = true }) {
-                    Text("Select Banshee")
-                        .frame(minWidth: 120)
+                // Banshee mode status
+                if waitingForStart {
+                    Text("Go to start point to begin race!")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else if bansheeGameActive {
+                    Text("Racing against banshee!")
+                        .font(.caption)
+                        .foregroundColor(.green)
                 }
-                .buttonStyle(.bordered)
-                .disabled(isRunning)
 
                 Spacer()
 
@@ -134,12 +143,15 @@ struct ContentView: View {
             .navigationTitle("BansheeRun")
             .sheet(isPresented: $showingActivityList) {
                 NavigationStack {
-                    ActivityListView()
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Done") { showingActivityList = false }
-                            }
+                    ActivityListView { activityId in
+                        showingActivityList = false
+                        loadActivityAsBanshee(id: activityId)
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { showingActivityList = false }
                         }
+                    }
                 }
                 .frame(minWidth: 400, minHeight: 500)
             }
@@ -151,20 +163,6 @@ struct ContentView: View {
                                 Button("Done") { showingPersonalBests = false }
                             }
                         }
-                }
-                .frame(minWidth: 400, minHeight: 500)
-            }
-            .sheet(isPresented: $showingBansheeSelector) {
-                NavigationStack {
-                    BansheeSelectorView { activityId in
-                        showingBansheeSelector = false
-                        loadActivityAsBanshee(id: activityId)
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showingBansheeSelector = false }
-                        }
-                    }
                 }
                 .frame(minWidth: 400, minHeight: 500)
             }
@@ -238,7 +236,6 @@ struct ContentView: View {
         }
 
         isRunning = true
-        startTime = Date()
         totalDistance = 0
         lastLocation = nil
         elapsedMs = 0
@@ -248,11 +245,36 @@ struct ContentView: View {
 
         locationManager.startTracking()
 
-        // Start timer to update elapsed time
+        // If banshee mode, wait for start point
+        if bansheeActivityId != nil {
+            waitingForStart = true
+            bansheeGameActive = false
+            startTime = nil // Don't start timer yet
+        } else {
+            // Normal mode - start immediately
+            startTime = Date()
+            startTimer()
+        }
+    }
+
+    private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             guard let start = startTime else { return }
             elapsedMs = Int64(Date().timeIntervalSince(start) * 1000)
         }
+    }
+
+    private func startBansheeRace() {
+        waitingForStart = false
+        bansheeGameActive = true
+        startTime = Date()
+        elapsedMs = 0
+        startTimer()
+    }
+
+    private func finishBansheeRace() {
+        bansheeGameActive = false
+        stopRun()
     }
 
     private func stopRun() {
@@ -260,6 +282,8 @@ struct ContentView: View {
         timer?.invalidate()
         timer = nil
         locationManager.stopTracking()
+        waitingForStart = false
+        bansheeGameActive = false
 
         // Save activity if we have coordinates
         if recordedCoordinates.count >= 2 {
@@ -309,6 +333,19 @@ struct ContentView: View {
     }
 
     private func updateWithLocation(_ location: CLLocation) {
+        let lat = location.coordinate.latitude
+        let lon = location.coordinate.longitude
+
+        // Handle banshee mode start point detection
+        if waitingForStart, let startPoint = bansheeStartPoint {
+            let distanceToStart = distanceBetween(lat1: lat, lon1: lon, lat2: startPoint.lat, lon2: startPoint.lon)
+            if distanceToStart <= startProximityThreshold {
+                startBansheeRace()
+            }
+            lastLocation = location
+            return
+        }
+
         // Calculate distance from last location
         if let last = lastLocation {
             let delta = location.distance(from: last)
@@ -317,27 +354,62 @@ struct ContentView: View {
         lastLocation = location
 
         // Get pacing info from Rust library
-        let lat = location.coordinate.latitude
-        let lon = location.coordinate.longitude
-
         pacingStatus = BansheeLib.getPacingStatus(lat: lat, lon: lon, elapsedMs: elapsedMs)
         timeDifferenceMs = BansheeLib.getTimeDifferenceMs(lat: lat, lon: lon, elapsedMs: elapsedMs)
 
         // Record coordinate for saving
         recordedCoordinates.append((lat: lat, lon: lon, timestamp: elapsedMs))
+
+        // Handle banshee mode end point detection
+        if bansheeGameActive, let endPoint = bansheeEndPoint {
+            let distanceToEnd = distanceBetween(lat1: lat, lon1: lon, lat2: endPoint.lat, lon2: endPoint.lon)
+            if distanceToEnd <= endProximityThreshold {
+                finishBansheeRace()
+            }
+        }
     }
 
-    private func loadActivityAsBanshee(id: String) {
+    func loadActivityAsBanshee(id: String) {
         guard let activityJson = repository.loadActivity(id: id) else {
             print("Failed to load activity")
             return
         }
 
+        // Parse activity to get start/end points
+        guard let activityData = activityJson.data(using: .utf8),
+              let activity = try? JSONDecoder().decode(Activity.self, from: activityData),
+              let firstCoord = activity.coordinates.first,
+              let lastCoord = activity.coordinates.last else {
+            print("Failed to parse activity coordinates")
+            return
+        }
+
         let result = BansheeLib.initSession(json: activityJson)
         if result == 0 {
-            print("Banshee loaded!")
+            bansheeActivityId = id
+            bansheeStartPoint = (lat: firstCoord.lat, lon: firstCoord.lon)
+            bansheeEndPoint = (lat: lastCoord.lat, lon: lastCoord.lon)
+            print("Banshee loaded! Start: \(firstCoord.lat), \(firstCoord.lon) End: \(lastCoord.lat), \(lastCoord.lon)")
         } else {
             print("Failed to load banshee: \(result)")
         }
     }
+
+    func clearBanshee() {
+        BansheeLib.clearSession()
+        bansheeActivityId = nil
+        bansheeStartPoint = nil
+        bansheeEndPoint = nil
+        waitingForStart = false
+        bansheeGameActive = false
+    }
+
+    private func distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+        let location1 = CLLocation(latitude: lat1, longitude: lon1)
+        let location2 = CLLocation(latitude: lat2, longitude: lon2)
+        return location1.distance(from: location2)
+    }
+
+    private let startProximityThreshold: Double = 30.0 // meters
+    private let endProximityThreshold: Double = 30.0 // meters
 }

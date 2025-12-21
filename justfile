@@ -40,7 +40,7 @@ setup:
     rustup component add rustfmt clippy
 
 # Setup all targets for cross-compilation
-setup-all: setup setup-android setup-ios setup-macos
+setup-all: setup setup-android
 
 # === Android Builds ===
 
@@ -63,63 +63,16 @@ build-android-arm32:
 # Build for all Android targets
 build-android: build-android-arm64 build-android-arm32
 
-# === iOS Builds ===
-
-# Install iOS targets
-setup-ios:
-    rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-
-# Build for iOS device (arm64)
-build-ios-device:
-    cargo build --release --target aarch64-apple-ios
-
-# Build for iOS simulator (x86_64)
-build-ios-sim-x86:
-    cargo build --release --target x86_64-apple-ios
-
-# Build for iOS simulator (arm64)
-build-ios-sim-arm64:
-    cargo build --release --target aarch64-apple-ios-sim
-
-# Build for all iOS targets
-build-ios: build-ios-device build-ios-sim-x86 build-ios-sim-arm64
-
-# === macOS Builds ===
-
-# Install macOS targets
-setup-macos:
-    rustup target add aarch64-apple-darwin x86_64-apple-darwin
-
-# Build for macOS Apple Silicon (arm64)
-build-macos:
-    cargo build --release --target aarch64-apple-darwin
-
-# Build for macOS x86_64 (Intel)
-build-macos-x86:
-    cargo build --release --target x86_64-apple-darwin
-
-# Build macOS app bundle
-build-macos-app: download-audio-macos
-    cd macos && ./build.sh
-
-# Build macOS .pkg installer
-build-macos-pkg: build-macos-app
-    cd macos && ./build-pkg.sh
-
-# Install macOS app to /Applications
-install-macos-app: build-macos-app
-    cp -r macos/build/BansheeRun.app /Applications/
-
 # === All Platforms ===
 
 # Build for all platforms (requires all targets installed)
-build-all: build build-android build-ios build-macos
+build-all: build build-android
 
 # Full CI pipeline (all checks)
 ci: check
 
 # Full CI pipeline including cross-platform builds
-ci-full: check build-android build-ios build-macos
+ci-full: check build-android
 
 # === Audio Assets ===
 
@@ -131,16 +84,8 @@ download-audio-android:
     curl -L -o android/app/src/main/res/raw/heartbeat.mp3 "https://github.com/user-attachments/files/24278755/heartbeat.mp3"
     curl -L -o android/app/src/main/res/raw/whispers.mp3 "https://github.com/user-attachments/files/24278756/whispers.mp3"
 
-# Download scary audio files for macOS/iOS
-download-audio-macos:
-    mkdir -p macos/BansheeRun/Resources
-    curl -L -o macos/BansheeRun/Resources/ambient_scary.mp3 "https://github.com/user-attachments/files/24278753/ambient_scary.mp3"
-    curl -L -o macos/BansheeRun/Resources/banshee_wail.mp3 "https://github.com/user-attachments/files/24278754/banshee_wail.mp3"
-    curl -L -o macos/BansheeRun/Resources/heartbeat.mp3 "https://github.com/user-attachments/files/24278755/heartbeat.mp3"
-    curl -L -o macos/BansheeRun/Resources/whispers.mp3 "https://github.com/user-attachments/files/24278756/whispers.mp3"
-
 # Download all audio assets
-download-audio: download-audio-android download-audio-macos
+download-audio: download-audio-android
 
 # === Android APK Build ===
 
@@ -169,25 +114,11 @@ copy-android-libs:
         cp artifacts/android-armeabi-v7a/*.so android/app/src/main/jniLibs/armeabi-v7a/; \
     fi
 
-# Prepare release packages (APK + iOS zip + macOS pkg)
-# Expects Android APK built and iOS/macOS artifacts in ./artifacts/
+# Prepare release packages (APK)
+# Expects Android APK built
 prepare-packages:
     mkdir -p packages
     cp android/app/build/outputs/apk/release/app-release.apk packages/bansheerun.apk
-    mkdir -p packages/ios
-    if [ -d "artifacts/ios-arm64" ]; then \
-        cp artifacts/ios-arm64/*.a packages/ios/; \
-    fi
-    if [ -d "artifacts/ios-x86_64-simulator" ]; then \
-        cp artifacts/ios-x86_64-simulator/*.a packages/ios/; \
-    fi
-    if [ -d "artifacts/ios-arm64-simulator" ]; then \
-        cp artifacts/ios-arm64-simulator/*.a packages/ios/; \
-    fi
-    cd packages && zip -r bansheerun-ios.zip ios/
-    if [ -f "artifacts/macos-pkg/BansheeRun.pkg" ]; then \
-        cp artifacts/macos-pkg/BansheeRun.pkg packages/bansheerun-macos.pkg; \
-    fi
 
 # Full publish preparation (everything except the release)
 # Run this on PRs to validate the entire publish pipeline
@@ -207,12 +138,10 @@ show-artifacts:
 list-packages:
     @ls -la packages/
 
-# Create a GitHub release with APK, iOS, and macOS packages
+# Create a GitHub release with APK
 # Usage: just release v1.0.0
 release version:
     gh release create "{{version}}" \
         --title "BansheeRun {{version}}" \
         --generate-notes \
-        packages/bansheerun.apk \
-        packages/bansheerun-ios.zip \
-        packages/bansheerun-macos.pkg
+        packages/bansheerun.apk

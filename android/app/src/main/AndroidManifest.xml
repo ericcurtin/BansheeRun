@@ -45,6 +45,12 @@
             android:label="Personal Bests"
             android:theme="@style/Theme.BansheeRun" />
 
+        <activity
+            android:name=".ActivityDetailActivity"
+            android:exported="false"
+            android:label="Activity"
+            android:theme="@style/Theme.BansheeRun" />
+
     </application>
 
 </manifest>

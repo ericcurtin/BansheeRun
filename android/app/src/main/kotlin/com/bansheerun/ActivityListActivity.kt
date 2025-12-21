@@ -23,14 +23,12 @@ class ActivityListActivity : AppCompatActivity() {
     private lateinit var filterGroup: RadioGroup
 
     private var selectedFilter: BansheeLib.ActivityType? = null
-    private var isSelectMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list)
 
-        isSelectMode = intent.getBooleanExtra("select_mode", false)
-        supportActionBar?.title = if (isSelectMode) "Select Banshee" else "Activities"
+        supportActionBar?.title = "Activities"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         activityRepository = ActivityRepository.getInstance(this)
@@ -105,12 +103,12 @@ class ActivityListActivity : AppCompatActivity() {
 
             init {
                 itemView.setOnClickListener {
-                    if (isSelectMode && adapterPosition != RecyclerView.NO_POSITION) {
+                    if (adapterPosition != RecyclerView.NO_POSITION) {
                         val activity = activities[adapterPosition]
-                        val resultIntent = android.content.Intent()
-                        resultIntent.putExtra("selected_activity_id", activity.id)
-                        setResult(RESULT_OK, resultIntent)
-                        finish()
+                        // Navigate to activity detail
+                        val intent = android.content.Intent(this@ActivityListActivity, ActivityDetailActivity::class.java)
+                        intent.putExtra("activity_id", activity.id)
+                        startActivity(intent)
                     }
                 }
             }

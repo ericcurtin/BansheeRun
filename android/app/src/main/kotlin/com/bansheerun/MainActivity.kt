@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -32,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeText: TextView
     private lateinit var timeDiffText: TextView
     private lateinit var startStopButton: Button
-    private lateinit var selectBestRunButton: Button
     private lateinit var activitiesButton: Button
     private lateinit var pbsButton: Button
     private lateinit var activityTypeGroup: RadioGroup
@@ -40,11 +40,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mapController: MapController
     private lateinit var weatherOverlay: BansheeWeatherOverlay
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var bansheeModeStatus: TextView
 
     private var trackingService: RunTrackingService? = null
     private var isServiceBound = false
     private var isRunning = false
     private var selectedActivityType: BansheeLib.ActivityType = BansheeLib.ActivityType.RUN
+
+    // Banshee mode state
+    private var bansheeActivityId: String? = null
+    private var bansheeStartPoint: Pair<Double, Double>? = null
+    private var bansheeEndPoint: Pair<Double, Double>? = null
+    private var waitingForStart = false
+    private var bansheeGameActive = false
+
+    private val startProximityThreshold = 30.0 // meters
+    private val endProximityThreshold = 30.0 // meters
 
     private lateinit var activityRepository: ActivityRepository
 
@@ -55,10 +66,7 @@ class MainActivity : AppCompatActivity() {
             isServiceBound = true
             trackingService?.setUpdateCallback { status, distance, timeMs, timeDiffMs, lat, lon ->
                 runOnUiThread {
-                    updateUI(status, distance, timeMs, timeDiffMs)
-                    mapController.updatePosition(lat, lon, timeMs)
-                    // Update wandering banshee behavior based on pacing
-                    mapController.updateWanderingBansheePacing(status, timeDiffMs)
+                    handleLocationUpdate(status, distance, timeMs, timeDiffMs, lat, lon)
                 }
             }
         }
@@ -67,6 +75,62 @@ class MainActivity : AppCompatActivity() {
             trackingService = null
             isServiceBound = false
         }
+    }
+
+    private fun handleLocationUpdate(
+        status: BansheeLib.PacingStatus,
+        distance: Double,
+        timeMs: Long,
+        timeDiffMs: Long,
+        lat: Double,
+        lon: Double
+    ) {
+        // Handle banshee mode start point detection
+        if (waitingForStart) {
+            bansheeStartPoint?.let { startPoint ->
+                val distanceToStart = distanceBetween(lat, lon, startPoint.first, startPoint.second)
+                if (distanceToStart <= startProximityThreshold) {
+                    startBansheeRace()
+                }
+            }
+            mapController.updatePosition(lat, lon, timeMs)
+            return
+        }
+
+        updateUI(status, distance, timeMs, timeDiffMs)
+        mapController.updatePosition(lat, lon, timeMs)
+        mapController.updateWanderingBansheePacing(status, timeDiffMs)
+
+        // Handle banshee mode end point detection
+        if (bansheeGameActive) {
+            bansheeEndPoint?.let { endPoint ->
+                val distanceToEnd = distanceBetween(lat, lon, endPoint.first, endPoint.second)
+                if (distanceToEnd <= endProximityThreshold) {
+                    finishBansheeRace()
+                }
+            }
+        }
+    }
+
+    private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+        val results = FloatArray(1)
+        Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+        return results[0]
+    }
+
+    private fun startBansheeRace() {
+        waitingForStart = false
+        bansheeGameActive = true
+        trackingService?.resetStartTime()
+        bansheeModeStatus.text = "Racing against banshee!"
+        bansheeModeStatus.setTextColor(android.graphics.Color.GREEN)
+        Toast.makeText(this, "Race started!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun finishBansheeRace() {
+        bansheeGameActive = false
+        Toast.makeText(this, "Race finished!", Toast.LENGTH_SHORT).show()
+        stopRun()
     }
 
     private val initialLocationPermissionLauncher = registerForActivityResult(
@@ -103,17 +167,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val activitySelectorLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val activityId = result.data?.getStringExtra("selected_activity_id")
-            if (activityId != null) {
-                loadActivityAsBanshee(activityId)
-            }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -125,10 +178,10 @@ class MainActivity : AppCompatActivity() {
         timeText = findViewById(R.id.timeText)
         timeDiffText = findViewById(R.id.timeDiffText)
         startStopButton = findViewById(R.id.startStopButton)
-        selectBestRunButton = findViewById(R.id.selectBestRunButton)
         activitiesButton = findViewById(R.id.activitiesButton)
         pbsButton = findViewById(R.id.pbsButton)
         activityTypeGroup = findViewById(R.id.activityTypeGroup)
+        bansheeModeStatus = findViewById(R.id.bansheeModeStatus)
 
         mapView = findViewById(R.id.mapView)
         mapController = MapController(this, mapView)
@@ -161,19 +214,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        selectBestRunButton.setOnClickListener {
-            // Launch activity selector to choose a banshee to race against
-            val intent = Intent(this, ActivityListActivity::class.java)
-            intent.putExtra("select_mode", true)
-            activitySelectorLauncher.launch(intent)
-        }
-
         activitiesButton.setOnClickListener {
             startActivity(Intent(this, ActivityListActivity::class.java))
         }
 
         pbsButton.setOnClickListener {
             startActivity(Intent(this, PersonalBestsActivity::class.java))
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleBansheeIntent(intent)
+    }
+
+    private fun handleBansheeIntent(intent: Intent?) {
+        intent?.getStringExtra("banshee_activity_id")?.let { activityId ->
+            loadActivityAsBanshee(activityId)
         }
     }
 
@@ -283,6 +340,16 @@ class MainActivity : AppCompatActivity() {
         for (i in 0 until activityTypeGroup.childCount) {
             activityTypeGroup.getChildAt(i).isEnabled = false
         }
+
+        // If banshee mode, wait for start point
+        if (bansheeActivityId != null) {
+            waitingForStart = true
+            bansheeGameActive = false
+            trackingService?.pauseTracking()
+            bansheeModeStatus.text = "Go to start point to begin race!"
+            bansheeModeStatus.setTextColor(android.graphics.Color.parseColor("#FFA500"))
+            bansheeModeStatus.visibility = android.view.View.VISIBLE
+        }
     }
 
     private fun stopRun() {
@@ -293,6 +360,9 @@ class MainActivity : AppCompatActivity() {
 
         trackingService?.stopTracking()
         isRunning = false
+        waitingForStart = false
+        bansheeGameActive = false
+        bansheeModeStatus.visibility = android.view.View.GONE
         updateStartButtonText()
         weatherOverlay.hide()
 
@@ -391,20 +461,49 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadActivityAsBanshee(activityId: String) {
+    fun loadActivityAsBanshee(activityId: String) {
         val activityJson = activityRepository.loadActivity(activityId)
         if (activityJson == null) {
             Toast.makeText(this, "Failed to load activity", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // Parse activity to get start/end points
+        try {
+            val jsonObject = org.json.JSONObject(activityJson)
+            val coordinates = jsonObject.getJSONArray("coordinates")
+            if (coordinates.length() >= 2) {
+                val firstCoord = coordinates.getJSONObject(0)
+                val lastCoord = coordinates.getJSONObject(coordinates.length() - 1)
+
+                bansheeStartPoint = Pair(firstCoord.getDouble("lat"), firstCoord.getDouble("lon"))
+                bansheeEndPoint = Pair(lastCoord.getDouble("lat"), lastCoord.getDouble("lon"))
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to parse activity coordinates", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val result = BansheeLib.initSession(activityJson)
         if (result == 0) {
-            Toast.makeText(this, "Banshee loaded!", Toast.LENGTH_SHORT).show()
+            bansheeActivityId = activityId
+            Toast.makeText(this, "Banshee loaded! Press Start to begin.", Toast.LENGTH_SHORT).show()
             mapController.loadBansheeRoute()
         } else {
             Toast.makeText(this, "Failed to load banshee", Toast.LENGTH_SHORT).show()
+            bansheeStartPoint = null
+            bansheeEndPoint = null
         }
+    }
+
+    fun clearBanshee() {
+        BansheeLib.clearSession()
+        bansheeActivityId = null
+        bansheeStartPoint = null
+        bansheeEndPoint = null
+        waitingForStart = false
+        bansheeGameActive = false
+        bansheeModeStatus.visibility = android.view.View.GONE
     }
 
     private fun updateStartButtonText() {

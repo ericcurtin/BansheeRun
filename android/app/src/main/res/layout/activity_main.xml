@@ -151,6 +151,17 @@
                     style="?android:attr/buttonBarButtonStyle" />
             </LinearLayout>
 
+            <!-- Banshee mode status -->
+            <TextView
+                android:id="@+id/bansheeModeStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="#FFA500"
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:paddingHorizontal="16dp" />
+
             <!-- Button controls at bottom -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -163,14 +174,7 @@
                     android:id="@+id/startStopButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/start_run"
-                    android:layout_marginEnd="16dp" />
-
-                <Button
-                    android:id="@+id/selectBestRunButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/select_banshee" />
+                    android:text="@string/start_run" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

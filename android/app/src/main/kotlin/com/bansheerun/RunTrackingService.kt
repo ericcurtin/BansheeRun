@@ -105,6 +105,21 @@ class RunTrackingService : Service() {
         stopSelf()
     }
 
+    fun pauseTracking() {
+        // Pause doesn't stop location updates but resets timing for when race actually starts
+        startTimeMs = 0
+        totalDistance = 0.0
+        lastLocation = null
+        recordedCoordinates.clear()
+    }
+
+    fun resetStartTime() {
+        startTimeMs = System.currentTimeMillis()
+        totalDistance = 0.0
+        lastLocation = null
+        recordedCoordinates.clear()
+    }
+
     private fun processLocation(location: Location) {
         val elapsedMs = System.currentTimeMillis() - startTimeMs
 

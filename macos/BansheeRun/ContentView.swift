@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import UserNotifications
 
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
@@ -178,6 +179,7 @@ struct ContentView: View {
         }
         .onAppear {
             locationManager.requestPermission()
+            requestNotificationPermission()
         }
     }
 
@@ -289,6 +291,11 @@ struct ContentView: View {
         if recordedCoordinates.count >= 2 {
             saveActivity()
         }
+
+        // Clear banshee state after saving
+        if bansheeActivityId != nil {
+            clearBanshee()
+        }
     }
 
     private func saveActivity() {
@@ -341,9 +348,11 @@ struct ContentView: View {
             let distanceToStart = distanceBetween(lat1: lat, lon1: lon, lat2: startPoint.lat, lon2: startPoint.lon)
             if distanceToStart <= startProximityThreshold {
                 startBansheeRace()
+                // Continue to record the first coordinate
+            } else {
+                lastLocation = location
+                return
             }
-            lastLocation = location
-            return
         }
 
         // Calculate distance from last location
@@ -412,4 +421,12 @@ struct ContentView: View {
 
     private let startProximityThreshold: Double = 30.0 // meters
     private let endProximityThreshold: Double = 30.0 // meters
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if let error = error {
+                print("Notification permission error: \(error)")
+            }
+        }
+    }
 }

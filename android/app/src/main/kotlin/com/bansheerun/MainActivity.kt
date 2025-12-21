@@ -91,10 +91,15 @@ class MainActivity : AppCompatActivity() {
                 val distanceToStart = distanceBetween(lat, lon, startPoint.first, startPoint.second)
                 if (distanceToStart <= startProximityThreshold) {
                     startBansheeRace()
+                    // Continue to record the first coordinate
+                } else {
+                    mapController.updatePosition(lat, lon, timeMs)
+                    return
                 }
+            } ?: run {
+                mapController.updatePosition(lat, lon, timeMs)
+                return
             }
-            mapController.updatePosition(lat, lon, timeMs)
-            return
         }
 
         updateUI(status, distance, timeMs, timeDiffMs)
@@ -167,6 +172,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val startupNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        // No action needed - just requesting permission at startup
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -191,6 +202,7 @@ class MainActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestInitialLocation()
+        requestNotificationPermissionAtStartup()
 
         // Activity type selection
         activityTypeGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -329,6 +341,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestNotificationPermissionAtStartup() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                startupNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     private fun startRun() {
         mapController.resetCurrentRun()
         val intent = Intent(this, RunTrackingService::class.java)
@@ -374,6 +398,11 @@ class MainActivity : AppCompatActivity() {
         // Save activity if we have enough data
         if (coordinates.size >= 2) {
             saveActivity(coordinates, totalDistance, durationMs)
+        }
+
+        // Clear banshee state after saving
+        if (bansheeActivityId != null) {
+            clearBanshee()
         }
     }
 

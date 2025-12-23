@@ -145,8 +145,7 @@ package-linux-deb: build-linux
 
     # Build the .deb
     dpkg-deb --build "$DEB_DIR"
-    mv "${DEB_DIR}.deb" "build/${APP_NAME}_${VERSION}_${DEB_ARCH}.deb"
-    echo "Created: build/${APP_NAME}_${VERSION}_${DEB_ARCH}.deb"
+    echo "Created: ${DEB_DIR}.deb"
 
 # Package macOS as .dmg
 package-macos-dmg: build-macos

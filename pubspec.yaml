@@ -1,0 +1,59 @@
+name: banshee_run_app
+description: "BansheeRun - Virtual Pacer and Banshee Runner app"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Core
+  cupertino_icons: ^1.0.8
+
+  # Rust bridge
+  banshee_run:
+    path: rust_builder
+  flutter_rust_bridge: 2.11.1
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Location
+  geolocator: ^13.0.2
+
+  # Audio
+  audioplayers: ^5.2.0
+
+  # Storage/paths
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Utilities
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
+  build_runner: ^2.4.14
+  freezed: ^2.5.8
+  json_serializable: ^6.9.4
+  riverpod_generator: ^2.6.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/audio/

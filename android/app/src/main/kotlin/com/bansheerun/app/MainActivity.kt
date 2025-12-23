@@ -1,4 +1,4 @@
-package com.example.banshee_run_temp
+package com.bansheerun.app
 
 import io.flutter.embedding.android.FlutterActivity
 

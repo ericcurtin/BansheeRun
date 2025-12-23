@@ -113,7 +113,7 @@ package-linux-deb: build-linux
     cat > "$DEB_DIR/usr/bin/${APP_NAME}" << 'LAUNCHER'
     #!/bin/bash
     cd /usr/lib/banshee-run
-    exec ./banshee_run_app "$@"
+    exec ./banshee-run "$@"
     LAUNCHER
     chmod +x "$DEB_DIR/usr/bin/${APP_NAME}"
 
@@ -145,8 +145,7 @@ package-linux-deb: build-linux
 
     # Build the .deb
     dpkg-deb --build "$DEB_DIR"
-    mv "${DEB_DIR}.deb" "build/${APP_NAME}_${VERSION}_${DEB_ARCH}.deb"
-    echo "Created: build/${APP_NAME}_${VERSION}_${DEB_ARCH}.deb"
+    echo "Created: ${DEB_DIR}.deb"
 
 # Package macOS as .dmg
 package-macos-dmg: build-macos
@@ -207,11 +206,11 @@ package-windows-exe: build-windows
     Source: "windows\\x64\\runner\\Release\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
     [Icons]
-    Name: "{group}\\${APP_NAME}"; Filename: "{app}\\banshee_run_app.exe"
-    Name: "{autodesktop}\\${APP_NAME}"; Filename: "{app}\\banshee_run_app.exe"
+    Name: "{group}\\${APP_NAME}"; Filename: "{app}\\BansheeRun.exe"
+    Name: "{autodesktop}\\${APP_NAME}"; Filename: "{app}\\BansheeRun.exe"
 
     [Run]
-    Filename: "{app}\\banshee_run_app.exe"; Description: "Launch ${APP_NAME}"; Flags: postinstall nowait
+    Filename: "{app}\\BansheeRun.exe"; Description: "Launch ${APP_NAME}"; Flags: postinstall nowait
     ISS
 
     # Run Inno Setup (Windows only, or via Wine)

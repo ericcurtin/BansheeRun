@@ -2,8 +2,10 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+permissions:
+  contents: write
 
 env:
   FLUTTER_VERSION: "3.38.5"
@@ -17,50 +19,51 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
+      release_version: ${{ steps.get_version.outputs.release_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get version from tag
+      - name: Get version from pubspec.yaml
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release_version=$VERSION-${{ github.run_number }}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: BansheeRun v${{ steps.get_version.outputs.version }}
-          body: |
-            ## BansheeRun v${{ steps.get_version.outputs.version }}
+        run: |
+          VERSION=${{ steps.get_version.outputs.release_version }}
+          gh release create "v$VERSION" \
+            --title "BansheeRun v$VERSION" \
+            --target "${{ github.sha }}" \
+            --notes "## BansheeRun v$VERSION
 
-            ### Downloads
-            - **Android**: `BansheeRun_${{ steps.get_version.outputs.version }}_android.apk`
-            - **Linux**: `BansheeRun_${{ steps.get_version.outputs.version }}_linux_amd64.deb`
-            - **macOS**: `BansheeRun_${{ steps.get_version.outputs.version }}_macos.dmg`
-            - **Windows**: `BansheeRun_${{ steps.get_version.outputs.version }}_windows_setup.exe`
+          ### Downloads
+          - **Android**: \`BansheeRun_${VERSION}_android.apk\`
+          - **Linux**: \`banshee-run_${VERSION}_amd64.deb\`
+          - **macOS**: \`BansheeRun_${VERSION}_macos.dmg\`
+          - **Windows**: \`BansheeRun_${VERSION}_windows_setup.exe\`
 
-            ### Installation
+          ### Installation
 
-            #### Android
-            Download the APK and install it on your device. You may need to enable "Install from unknown sources".
+          #### Android
+          Download the APK and install it on your device. You may need to enable \"Install from unknown sources\".
 
-            #### Linux (Debian/Ubuntu)
-            ```bash
-            sudo dpkg -i BansheeRun_${{ steps.get_version.outputs.version }}_linux_amd64.deb
-            ```
+          #### Linux (Debian/Ubuntu)
+          \`\`\`bash
+          sudo dpkg -i banshee-run_${VERSION}_amd64.deb
+          \`\`\`
 
-            #### macOS
-            Open the DMG, drag BansheeRun to Applications.
+          #### macOS
+          Open the DMG, drag BansheeRun to Applications.
 
-            #### Windows
-            Run the installer and follow the prompts.
-          draft: false
-          prerelease: false
+          #### Windows
+          Run the installer and follow the prompts."
 
   # ============================================================================
   # Build & Upload Android
@@ -112,14 +115,11 @@ jobs:
         run: just package-android-apk
 
       - name: Upload Android APK
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: build/BansheeRun_${{ needs.create-release.outputs.version }}_android.apk
-          asset_name: BansheeRun_${{ needs.create-release.outputs.version }}_android.apk
-          asset_content_type: application/vnd.android.package-archive
+        run: |
+          gh release upload "v${{ needs.create-release.outputs.release_version }}" \
+            "build/BansheeRun_${{ needs.create-release.outputs.version }}_android.apk"
 
   # ============================================================================
   # Build & Upload Linux
@@ -168,22 +168,12 @@ jobs:
       - name: Build and package Linux .deb
         run: just package-linux-deb
 
-      - name: Get .deb filename
-        id: deb_name
-        run: |
-          DEB_FILE=$(ls build/*.deb | head -1)
-          echo "filename=$(basename $DEB_FILE)" >> $GITHUB_OUTPUT
-          echo "filepath=$DEB_FILE" >> $GITHUB_OUTPUT
-
       - name: Upload Linux .deb
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.deb_name.outputs.filepath }}
-          asset_name: ${{ steps.deb_name.outputs.filename }}
-          asset_content_type: application/vnd.debian.binary-package
+        run: |
+          gh release upload "v${{ needs.create-release.outputs.release_version }}" \
+            build/*.deb
 
   # ============================================================================
   # Build & Upload macOS
@@ -228,14 +218,11 @@ jobs:
         run: just package-macos-dmg
 
       - name: Upload macOS .dmg
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: build/BansheeRun_${{ needs.create-release.outputs.version }}_macos.dmg
-          asset_name: BansheeRun_${{ needs.create-release.outputs.version }}_macos.dmg
-          asset_content_type: application/x-apple-diskimage
+        run: |
+          gh release upload "v${{ needs.create-release.outputs.release_version }}" \
+            "build/BansheeRun_${{ needs.create-release.outputs.version }}_macos.dmg"
 
   # ============================================================================
   # Build & Upload Windows
@@ -303,11 +290,11 @@ jobs:
           Source: "windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
           [Icons]
-          Name: "{group}\BansheeRun"; Filename: "{app}\banshee_run_app.exe"
-          Name: "{autodesktop}\BansheeRun"; Filename: "{app}\banshee_run_app.exe"
+          Name: "{group}\BansheeRun"; Filename: "{app}\BansheeRun.exe"
+          Name: "{autodesktop}\BansheeRun"; Filename: "{app}\BansheeRun.exe"
 
           [Run]
-          Filename: "{app}\banshee_run_app.exe"; Description: "Launch BansheeRun"; Flags: postinstall nowait
+          Filename: "{app}\BansheeRun.exe"; Description: "Launch BansheeRun"; Flags: postinstall nowait
           ISS
 
       - name: Build installer
@@ -315,11 +302,8 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build\installer.iss
 
       - name: Upload Windows installer
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: build/BansheeRun_${{ needs.create-release.outputs.version }}_windows_setup.exe
-          asset_name: BansheeRun_${{ needs.create-release.outputs.version }}_windows_setup.exe
-          asset_content_type: application/x-msdownload
+        run: |
+          gh release upload "v${{ needs.create-release.outputs.release_version }}" `
+            "build/BansheeRun_${{ needs.create-release.outputs.version }}_windows_setup.exe"

@@ -2,9 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:banshee_run_app/src/providers/location_provider.dart';
 import 'package:banshee_run_app/src/screens/run_setup_screen.dart';
 import 'package:banshee_run_app/src/screens/run_complete_screen.dart';
+import 'package:banshee_run_app/src/services/location_service.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/widgets/stats_overlay.dart';
 
@@ -26,6 +29,8 @@ class ActiveRunScreen extends ConsumerStatefulWidget {
 
 class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   final MapController _mapController = MapController();
+  final LocationService _locationService = LocationService();
+  StreamSubscription<Position>? _locationSubscription;
 
   bool _isPaused = false;
 
@@ -39,13 +44,26 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   LatLng? _currentPosition;
   LatLng? _bansheePosition;
   List<LatLng> _route = [];
+  LatLng? _lastPosition;
 
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _initializePosition();
     _startRun();
+  }
+
+  void _initializePosition() {
+    // Get the initial position from the location provider (already acquired at app startup)
+    final locationState = ref.read(locationNotifierProvider);
+    if (locationState.currentPosition != null) {
+      _currentPosition = LatLng(
+        locationState.currentPosition!.latitude,
+        locationState.currentPosition!.longitude,
+      );
+    }
   }
 
   void _startRun() {
@@ -54,16 +72,54 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
       if (!_isPaused) {
         setState(() {
           _elapsedMs += 1000;
-          // TODO: Update from actual GPS
         });
       }
     });
 
-    // TODO: Start GPS tracking
-    // For demo, set a default position
+    // Start GPS tracking and listen to location updates
+    _startLocationTracking();
+  }
+
+  Future<void> _startLocationTracking() async {
+    final success = await _locationService.startTracking();
+    if (success) {
+      _locationSubscription = _locationService.positionStream.listen(
+        _onLocationUpdate,
+      );
+    }
+  }
+
+  void _onLocationUpdate(Position position) {
+    if (_isPaused) return;
+
+    final newPosition = LatLng(position.latitude, position.longitude);
+
+    // Calculate distance if we have a previous position
+    if (_lastPosition != null) {
+      final distance = _locationService.calculateDistance(
+        _lastPosition!.latitude,
+        _lastPosition!.longitude,
+        newPosition.latitude,
+        newPosition.longitude,
+      );
+      _distanceM += distance;
+    }
+
+    // Calculate pace
+    double pace = 0;
+    if (_distanceM > 0 && _elapsedMs > 0) {
+      pace = (_elapsedMs / 1000) / (_distanceM / 1000);
+    }
+
     setState(() {
-      _currentPosition = const LatLng(51.5074, -0.1278); // London
+      _lastPosition = _currentPosition;
+      _currentPosition = newPosition;
+      _route = [..._route, newPosition];
+      _currentPaceSecPerKm = pace;
     });
+
+    // Center map on current position
+    _mapController.move(newPosition, _mapController.camera.zoom);
   }
 
   void _togglePause() {
@@ -101,6 +157,8 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
 
   void _finishRun() {
     _timer?.cancel();
+    _locationSubscription?.cancel();
+    _locationService.stopTracking();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -120,6 +178,8 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _locationSubscription?.cancel();
+    _locationService.stopTracking();
     _mapController.dispose();
     super.dispose();
   }

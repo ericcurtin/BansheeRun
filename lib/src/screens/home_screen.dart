@@ -3,14 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:banshee_run_app/src/screens/run_setup_screen.dart';
 import 'package:banshee_run_app/src/screens/history_screen.dart';
 import 'package:banshee_run_app/src/screens/settings_screen.dart';
+import 'package:banshee_run_app/src/providers/location_provider.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/widgets/stats_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Start acquiring GPS location as soon as the app opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(locationNotifierProvider.notifier).init();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Padding(

@@ -39,6 +39,7 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   double _distanceM = 0.0;
   double _currentPaceSecPerKm = 0.0;
   double _bansheeDeltaM = 0.0;
+  late int _startTimeMs;
 
   // Positions
   LatLng? _currentPosition;
@@ -51,6 +52,7 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   @override
   void initState() {
     super.initState();
+    _startTimeMs = DateTime.now().millisecondsSinceEpoch;
     // Use addPostFrameCallback to ensure the widget is mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializePosition();
@@ -177,6 +179,7 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
               ? (_elapsedMs / 1000) / (_distanceM / 1000)
               : 0,
           route: _route,
+          startTimeMs: _startTimeMs,
           bansheeDeltaM: _bansheeDeltaM,
         ),
       ),

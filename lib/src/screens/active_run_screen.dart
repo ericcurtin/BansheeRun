@@ -29,7 +29,7 @@ class ActiveRunScreen extends ConsumerStatefulWidget {
 
 class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   final MapController _mapController = MapController();
-  final LocationService _locationService = LocationService();
+  late final LocationService _locationService;
   StreamSubscription<Position>? _locationSubscription;
 
   bool _isPaused = false;
@@ -51,18 +51,26 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   @override
   void initState() {
     super.initState();
-    _initializePosition();
-    _startRun();
+    // Use addPostFrameCallback to ensure the widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializePosition();
+      _startRun();
+    });
   }
 
   void _initializePosition() {
+    // Get the location service from the provider
+    _locationService = ref.read(locationServiceProvider);
+    
     // Get the initial position from the location provider (already acquired at app startup)
     final locationState = ref.read(locationNotifierProvider);
     if (locationState.currentPosition != null) {
-      _currentPosition = LatLng(
-        locationState.currentPosition!.latitude,
-        locationState.currentPosition!.longitude,
-      );
+      setState(() {
+        _currentPosition = LatLng(
+          locationState.currentPosition!.latitude,
+          locationState.currentPosition!.longitude,
+        );
+      });
     }
   }
 

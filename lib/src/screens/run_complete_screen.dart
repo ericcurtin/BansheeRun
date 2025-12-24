@@ -132,15 +132,6 @@ class _RunCompleteScreenState extends ConsumerState<RunCompleteScreen> {
                       size: 48,
                       color: Colors.white,
                     ),
-                    const SizedBox(height: AppSizes.paddingSmall),
-                    Text(
-                      'Great Run!',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                    ),
                     if (widget.bansheeDeltaM != null &&
                         widget.bansheeDeltaM! < 0)
                       Padding(

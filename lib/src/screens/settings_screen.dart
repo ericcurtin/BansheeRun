@@ -129,26 +129,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-          _SettingsSection(
-            title: 'About',
-            children: [
-              const ListTile(title: Text('Version'), subtitle: Text('1.0.0')),
-              ListTile(
-                title: const Text('Open Source Licenses'),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textSecondary,
-                ),
-                onTap: () {
-                  showLicensePage(
-                    context: context,
-                    applicationName: 'BansheeRun',
-                    applicationVersion: '1.0.0',
-                  );
-                },
-              ),
-            ],
-          ),
         ],
       ),
     );

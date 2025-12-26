@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/utils/formatters.dart';
 import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
+import 'package:banshee_run_app/src/screens/run_detail_screen.dart';
 
 final runsProvider = FutureProvider<List<rust_api.RunSummaryDto>>((ref) async {
   return await rust_api.getAllRuns();
@@ -60,7 +61,12 @@ class HistoryScreen extends ConsumerWidget {
                     durationMs: run.durationMs,
                     paceSecPerKm: run.avgPaceSecPerKm,
                     onTap: () {
-                      // TODO: Navigate to run detail
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RunDetailScreen(runId: run.id),
+                        ),
+                      );
                     },
                   );
                 },

@@ -46,7 +46,6 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   LatLng? _currentPosition;
   LatLng? _bansheePosition;
   List<LatLng> _route = [];
-  LatLng? _lastPosition;
 
   Timer? _timer;
 
@@ -105,11 +104,11 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
 
     final newPosition = LatLng(position.latitude, position.longitude);
 
-    // Calculate distance if we have a previous position
-    if (_lastPosition != null) {
+    // Calculate distance from previous tracked position
+    if (_currentPosition != null) {
       final distance = _locationService.calculateDistance(
-        _lastPosition!.latitude,
-        _lastPosition!.longitude,
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
         newPosition.latitude,
         newPosition.longitude,
       );
@@ -123,7 +122,6 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
     }
 
     setState(() {
-      _lastPosition = _currentPosition;
       _currentPosition = newPosition;
       _route = [..._route, newPosition];
       _currentPaceSecPerKm = pace;

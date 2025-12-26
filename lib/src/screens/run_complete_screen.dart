@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:banshee_run_app/src/screens/home_screen.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/utils/formatters.dart';
+import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
 
 class RunCompleteScreen extends ConsumerStatefulWidget {
   final double distanceM;
@@ -12,6 +13,7 @@ class RunCompleteScreen extends ConsumerStatefulWidget {
   final double avgPaceSecPerKm;
   final List<LatLng> route;
   final double? bansheeDeltaM;
+  final int startTimeMs;
 
   const RunCompleteScreen({
     super.key,
@@ -19,6 +21,7 @@ class RunCompleteScreen extends ConsumerStatefulWidget {
     required this.durationMs,
     required this.avgPaceSecPerKm,
     required this.route,
+    required this.startTimeMs,
     this.bansheeDeltaM,
   });
 
@@ -33,11 +36,58 @@ class _RunCompleteScreenState extends ConsumerState<RunCompleteScreen> {
   Future<void> _saveRun() async {
     setState(() => _isSaving = true);
 
-    // TODO: Save run via Rust API
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      // Create a new run to get a unique ID
+      final runId = await rust_api.createRun();
 
-    if (mounted) {
-      _navigateHome();
+      // Convert route points to GPS point DTOs
+      // Since we don't have timestamps for each point, we'll distribute them
+      // evenly across the run duration
+      final points = <rust_api.GpsPointDto>[];
+      if (widget.route.isNotEmpty) {
+        final intervalMs = widget.route.length > 1
+            ? widget.durationMs ~/ (widget.route.length - 1)
+            : 0;
+
+        for (int i = 0; i < widget.route.length; i++) {
+          final point = widget.route[i];
+          points.add(
+            rust_api.GpsPointDto(
+              lat: point.latitude,
+              lon: point.longitude,
+              timestampMs: widget.startTimeMs + (i * intervalMs),
+            ),
+          );
+        }
+      }
+
+      // Create and save the run DTO
+      final runDto = rust_api.RunDto(
+        id: runId,
+        name: _nameController.text.isNotEmpty ? _nameController.text : null,
+        startTimeMs: widget.startTimeMs,
+        endTimeMs: widget.startTimeMs + widget.durationMs,
+        points: points,
+        distanceMeters: widget.distanceM,
+        durationMs: widget.durationMs,
+        avgPaceSecPerKm: widget.distanceM > 0 ? widget.avgPaceSecPerKm : null,
+      );
+
+      await rust_api.saveRun(runDto: runDto);
+
+      if (mounted) {
+        _navigateHome();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save run: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 

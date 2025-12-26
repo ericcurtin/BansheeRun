@@ -10,6 +10,7 @@ import 'package:banshee_run_app/src/screens/run_complete_screen.dart';
 import 'package:banshee_run_app/src/services/location_service.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/widgets/stats_overlay.dart';
+import 'package:banshee_run_app/src/services/tile_cache_service.dart';
 
 class ActiveRunScreen extends ConsumerStatefulWidget {
   final BansheeMode bansheeMode;
@@ -211,6 +212,7 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.bansheerun.app',
+                tileProvider: TileCacheService.instance.getTileProvider(),
               ),
               // Route polyline
               if (_route.isNotEmpty)

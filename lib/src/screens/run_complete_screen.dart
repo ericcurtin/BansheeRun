@@ -6,6 +6,7 @@ import 'package:banshee_run_app/src/screens/home_screen.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/utils/formatters.dart';
 import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
+import 'package:banshee_run_app/src/services/tile_cache_service.dart';
 
 class RunCompleteScreen extends ConsumerStatefulWidget {
   final double distanceM;
@@ -265,6 +266,7 @@ class _RunCompleteScreenState extends ConsumerState<RunCompleteScreen> {
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.bansheerun.app',
+                      tileProvider: TileCacheService.instance.getTileProvider(),
                     ),
                     if (hasRoute)
                       PolylineLayer(

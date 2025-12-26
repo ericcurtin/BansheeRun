@@ -2,61 +2,70 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/utils/formatters.dart';
+import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
+
+final runsProvider = FutureProvider<List<rust_api.RunSummaryDto>>((ref) async {
+  return await rust_api.getAllRuns();
+});
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // TODO: Load runs from Rust API
-    final runs = <Map<String, dynamic>>[];
+    final runsAsync = ref.watch(runsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Run History')),
-      body: runs.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.history,
-                    size: 64,
-                    color: AppColors.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: AppSizes.paddingMedium),
-                  Text(
-                    'No runs yet',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.textSecondary,
+      body: runsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) =>
+            Center(child: Text('Error loading runs: $error')),
+        data: (runs) => runs.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.history,
+                      size: 64,
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
                     ),
-                  ),
-                  const SizedBox(height: AppSizes.paddingSmall),
-                  Text(
-                    'Complete your first run to see it here',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    const SizedBox(height: AppSizes.paddingMedium),
+                    Text(
+                      'No runs yet',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppSizes.paddingSmall),
+                    Text(
+                      'Complete your first run to see it here',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(AppSizes.paddingMedium),
+                itemCount: runs.length,
+                itemBuilder: (context, index) {
+                  final run = runs[index];
+                  return _RunCard(
+                    name: run.name,
+                    date: DateTime.fromMillisecondsSinceEpoch(run.startTimeMs),
+                    distanceM: run.distanceMeters,
+                    durationMs: run.durationMs,
+                    paceSecPerKm: run.avgPaceSecPerKm,
+                    onTap: () {
+                      // TODO: Navigate to run detail
+                    },
+                  );
+                },
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSizes.paddingMedium),
-              itemCount: runs.length,
-              itemBuilder: (context, index) {
-                final run = runs[index];
-                return _RunCard(
-                  name: run['name'] as String?,
-                  date: run['date'] as DateTime,
-                  distanceM: run['distance'] as double,
-                  durationMs: run['duration'] as int,
-                  paceSecPerKm: run['pace'] as double?,
-                  onTap: () {
-                    // TODO: Navigate to run detail
-                  },
-                );
-              },
-            ),
+      ),
     );
   }
 }

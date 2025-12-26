@@ -73,20 +73,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Maps',
             children: [
               ListTile(
-                title: const Text('Offline Maps'),
-                subtitle: const Text('Download maps for offline use'),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textSecondary,
-                ),
-                onTap: () {
-                  // TODO: Open offline maps screen
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
-                },
-              ),
-              ListTile(
                 title: const Text('Clear Map Cache'),
                 subtitle: const Text('Free up storage space'),
                 trailing: const Icon(
@@ -102,20 +88,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SettingsSection(
             title: 'Data',
             children: [
-              ListTile(
-                title: const Text('Export Runs'),
-                subtitle: const Text('Export your run data'),
-                trailing: const Icon(
-                  Icons.download,
-                  color: AppColors.textSecondary,
-                ),
-                onTap: () {
-                  // TODO: Export functionality
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Coming soon!')));
-                },
-              ),
               ListTile(
                 title: const Text('Delete All Runs'),
                 subtitle: const Text('Permanently delete all run data'),

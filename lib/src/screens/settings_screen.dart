@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
+import 'package:banshee_run_app/src/services/tile_cache_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -13,6 +14,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _useMetric = true;
   bool _audioEnabled = true;
   bool _keepScreenOn = true;
+  String _cacheSize = 'Calculating...';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCacheSize();
+  }
+
+  Future<void> _updateCacheSize() async {
+    final size = await TileCacheService.instance.getCacheSize();
+    if (mounted) {
+      setState(() {
+        _cacheSize = TileCacheService.instance.formatCacheSize(size);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               ListTile(
                 title: const Text('Clear Map Cache'),
-                subtitle: const Text('Free up storage space'),
+                subtitle: Text('Currently using $_cacheSize'),
                 trailing: const Icon(
                   Icons.delete_outline,
                   color: AppColors.textSecondary,
@@ -112,8 +129,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Clear Cache?'),
-        content: const Text(
-          'This will remove all downloaded map tiles. You will need to re-download them for offline use.',
+        content: Text(
+          'This will remove all downloaded map tiles ($_cacheSize). Maps will be re-downloaded as needed.',
         ),
         actions: [
           TextButton(
@@ -121,12 +138,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              // TODO: Clear cache
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Cache cleared')));
+              await TileCacheService.instance.clearCache();
+              await _updateCacheSize();
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Cache cleared')),
+              );
             },
             child: const Text(
               'Clear',

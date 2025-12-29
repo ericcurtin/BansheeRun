@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:banshee_run_app/src/screens/run_setup_screen.dart';
 import 'package:banshee_run_app/src/screens/history_screen.dart';
 import 'package:banshee_run_app/src/screens/settings_screen.dart';
+import 'package:banshee_run_app/src/screens/run_detail_screen.dart';
 import 'package:banshee_run_app/src/providers/location_provider.dart';
+import 'package:banshee_run_app/src/providers/run_provider.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
+import 'package:banshee_run_app/src/utils/formatters.dart';
 import 'package:banshee_run_app/src/widgets/stats_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -76,24 +79,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: AppSizes.paddingLarge),
 
               // Stats overview
-              Row(
-                children: [
-                  Expanded(
-                    child: StatsCard(
-                      title: 'Total Runs',
-                      value: '0',
-                      icon: Icons.directions_run,
+              Consumer(
+                builder: (context, ref, child) {
+                  final statsAsync = ref.watch(totalStatsProvider);
+                  return statsAsync.when(
+                    loading: () => Row(
+                      children: [
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Runs',
+                            value: '...',
+                            icon: Icons.directions_run,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.paddingMedium),
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Distance',
+                            value: '...',
+                            icon: Icons.straighten,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: AppSizes.paddingMedium),
-                  Expanded(
-                    child: StatsCard(
-                      title: 'Total Distance',
-                      value: '0.0 km',
-                      icon: Icons.straighten,
+                    error: (_, _) => Row(
+                      children: [
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Runs',
+                            value: '0',
+                            icon: Icons.directions_run,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.paddingMedium),
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Distance',
+                            value: '0.0 km',
+                            icon: Icons.straighten,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    data: (stats) => Row(
+                      children: [
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Runs',
+                            value: '${stats.runCount}',
+                            icon: Icons.directions_run,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.paddingMedium),
+                        Expanded(
+                          child: StatsCard(
+                            title: 'Total Distance',
+                            value: Formatters.formatDistanceKm(
+                              stats.totalDistance,
+                            ),
+                            icon: Icons.straighten,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: AppSizes.paddingLarge),
 
@@ -161,33 +211,114 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: AppSizes.paddingSmall),
 
-              // Recent runs list (placeholder)
+              // Recent runs list
               Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.directions_run,
-                        size: 64,
-                        color: AppColors.textSecondary.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(height: AppSizes.paddingMedium),
-                      Text(
-                        'No runs yet',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textSecondary,
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final runsAsync = ref.watch(runsProvider);
+                    return runsAsync.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, _) => Center(
+                        child: Text(
+                          'Error loading runs',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.textSecondary),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Start your first run to see it here',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
+                      data: (runs) {
+                        if (runs.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.directions_run,
+                                  size: 64,
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSizes.paddingMedium),
+                                Text(
+                                  'No runs yet',
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Start your first run to see it here',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        // Show up to 3 recent runs
+                        final recentRuns = runs.take(3).toList();
+                        return ListView.builder(
+                          itemCount: recentRuns.length,
+                          itemBuilder: (context, index) {
+                            final run = recentRuns[index];
+                            return Card(
+                              margin: const EdgeInsets.only(
+                                bottom: AppSizes.paddingSmall,
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  child: Icon(
+                                    Icons.directions_run,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                title: Text(
+                                  run.name ?? 'Run',
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  '${Formatters.formatDistanceKm(run.distanceMeters)} • ${Formatters.formatDuration(run.durationMs)}',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                                trailing: Text(
+                                  Formatters.formatRelativeTime(
+                                    DateTime.fromMillisecondsSinceEpoch(
+                                      run.startTimeMs,
+                                    ),
+                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          RunDetailScreen(runId: run.id),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

@@ -142,13 +142,14 @@ fn wire__crate__api__banshee_api__calculate_banshee_delta_impl(
             let api_target_pace_sec_per_km = <Option<f64>>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::banshee_api::calculate_banshee_delta(
-                    api_banshee_distance_m,
-                    api_banshee_time_ms,
-                    api_runner_distance_m,
-                    api_runner_time_ms,
-                    api_target_pace_sec_per_km,
-                ))?;
+                let output_ok =
+                    Result::<_, ()>::Ok(crate::api::banshee_api::calculate_banshee_delta(
+                        api_banshee_distance_m,
+                        api_banshee_time_ms,
+                        api_runner_distance_m,
+                        api_runner_time_ms,
+                        api_target_pace_sec_per_km,
+                    ))?;
                 Ok(output_ok)
             })())
         },
@@ -279,11 +280,12 @@ fn wire__crate__api__banshee_api__check_position_change_impl(
             let api_threshold_m = <f64>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::banshee_api::check_position_change(
-                    api_previous_delta_m,
-                    api_current_delta_m,
-                    api_threshold_m,
-                ))?;
+                let output_ok =
+                    Result::<_, ()>::Ok(crate::api::banshee_api::check_position_change(
+                        api_previous_delta_m,
+                        api_current_delta_m,
+                        api_threshold_m,
+                    ))?;
                 Ok(output_ok)
             })())
         },
@@ -575,9 +577,9 @@ fn wire__crate__api__banshee_api__format_banshee_delta_impl(
             let api_distance_delta_meters = <f64>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::banshee_api::format_banshee_delta(
-                    api_distance_delta_meters,
-                ))?;
+                let output_ok = Result::<_, ()>::Ok(
+                    crate::api::banshee_api::format_banshee_delta(api_distance_delta_meters),
+                )?;
                 Ok(output_ok)
             })())
         },
@@ -1452,7 +1454,9 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         2 => wire__crate__api__stats_api__calculate_distance_impl(ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__banshee_api__calculate_banshee_delta_impl(ptr, rust_vec_len, data_len),
+        3 => {
+            wire__crate__api__banshee_api__calculate_banshee_delta_impl(ptr, rust_vec_len, data_len)
+        }
         4 => wire__crate__api__stats_api__calculate_pace_impl(ptr, rust_vec_len, data_len),
         5 => wire__crate__api__stats_api__calculate_pace_per_mile_impl(ptr, rust_vec_len, data_len),
         6 => {

@@ -1,13 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:banshee_run_app/src/providers/location_provider.dart';
+import 'package:banshee_run_app/src/providers/run_provider.dart';
 import 'package:banshee_run_app/src/screens/run_setup_screen.dart';
 import 'package:banshee_run_app/src/screens/run_complete_screen.dart';
-import 'package:banshee_run_app/src/services/location_service.dart';
 import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/widgets/stats_overlay.dart';
 import 'package:banshee_run_app/src/services/tile_cache_service.dart';
@@ -30,111 +28,28 @@ class ActiveRunScreen extends ConsumerStatefulWidget {
 
 class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
   final MapController _mapController = MapController();
-  late final LocationService _locationService;
-  StreamSubscription<Position>? _locationSubscription;
 
-  bool _isPaused = false;
-
-  // Run stats
-  int _elapsedMs = 0;
-  double _distanceM = 0.0;
-  double _currentPaceSecPerKm = 0.0;
-  double _bansheeDeltaM = 0.0;
-  late int _startTimeMs;
-
-  // Positions
-  LatLng? _currentPosition;
+  // Banshee tracking (not part of foreground service)
   LatLng? _bansheePosition;
-  List<LatLng> _route = [];
-
-  Timer? _timer;
+  double _bansheeDeltaM = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _startTimeMs = DateTime.now().millisecondsSinceEpoch;
-    // Use addPostFrameCallback to ensure the widget is mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializePosition();
-      _startRun();
+      ref.read(foregroundRunProvider.notifier).startRun();
     });
-  }
-
-  void _initializePosition() {
-    // Get the location service from the provider
-    _locationService = ref.read(locationServiceProvider);
-
-    // Get the initial position from the location provider (already acquired at app startup)
-    final locationState = ref.read(locationNotifierProvider);
-    if (locationState.currentPosition != null) {
-      setState(() {
-        _currentPosition = LatLng(
-          locationState.currentPosition!.latitude,
-          locationState.currentPosition!.longitude,
-        );
-      });
-    }
-  }
-
-  void _startRun() {
-    // Start timer
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused) {
-        setState(() {
-          _elapsedMs += 1000;
-        });
-      }
-    });
-
-    // Start GPS tracking and listen to location updates
-    _startLocationTracking();
-  }
-
-  Future<void> _startLocationTracking() async {
-    final success = await _locationService.startTracking();
-    if (success) {
-      _locationSubscription = _locationService.positionStream.listen(
-        _onLocationUpdate,
-      );
-    }
-  }
-
-  void _onLocationUpdate(Position position) {
-    if (_isPaused) return;
-
-    final newPosition = LatLng(position.latitude, position.longitude);
-
-    // Calculate distance from previous tracked position
-    if (_currentPosition != null) {
-      final distance = _locationService.calculateDistance(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-        newPosition.latitude,
-        newPosition.longitude,
-      );
-      _distanceM += distance;
-    }
-
-    // Calculate pace
-    double pace = 0;
-    if (_distanceM > 0 && _elapsedMs > 0) {
-      pace = (_elapsedMs / 1000) / (_distanceM / 1000);
-    }
-
-    setState(() {
-      _currentPosition = newPosition;
-      _route = [..._route, newPosition];
-      _currentPaceSecPerKm = pace;
-    });
-
-    // Center map on current position
-    _mapController.move(newPosition, _mapController.camera.zoom);
   }
 
   void _togglePause() {
-    setState(() {
-      _isPaused = !_isPaused;
-    });
+    final notifier = ref.read(foregroundRunProvider.notifier);
+    final state = ref.read(foregroundRunProvider);
+
+    if (state.status == ForegroundRunStatus.paused) {
+      notifier.resumeRun();
+    } else {
+      notifier.pauseRun();
+    }
   }
 
   void _stopRun() {
@@ -164,193 +79,212 @@ class _ActiveRunScreenState extends ConsumerState<ActiveRunScreen> {
     );
   }
 
-  void _finishRun() {
-    _timer?.cancel();
-    _locationSubscription?.cancel();
-    _locationService.stopTracking();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RunCompleteScreen(
-          distanceM: _distanceM,
-          durationMs: _elapsedMs,
-          avgPaceSecPerKm: _distanceM > 0
-              ? (_elapsedMs / 1000) / (_distanceM / 1000)
-              : 0,
-          route: _route,
-          startTimeMs: _startTimeMs,
-          bansheeDeltaM: _bansheeDeltaM,
+  Future<void> _finishRun() async {
+    final finalState = await ref
+        .read(foregroundRunProvider.notifier)
+        .finishRun();
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RunCompleteScreen(
+            distanceM: finalState.distanceM,
+            durationMs: finalState.elapsedMs,
+            avgPaceSecPerKm: finalState.distanceM > 0
+                ? (finalState.elapsedMs / 1000) / (finalState.distanceM / 1000)
+                : 0,
+            route: finalState.route,
+            startTimeMs: finalState.startTimeMs,
+            bansheeDeltaM: _bansheeDeltaM,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _locationSubscription?.cancel();
-    _locationService.stopTracking();
     _mapController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Map
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentPosition ?? const LatLng(51.5074, -0.1278),
-              initialZoom: 16.0,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.bansheerun.app',
-                tileProvider: TileCacheService.instance.getTileProvider(),
+    final runState = ref.watch(foregroundRunProvider);
+    final currentPosition = runState.currentPosition;
+    final route = runState.route;
+    final isPaused = runState.status == ForegroundRunStatus.paused;
+
+    // Center map when position updates
+    if (currentPosition != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          _mapController.move(currentPosition, _mapController.camera.zoom);
+        } catch (_) {
+          // Map not ready yet
+        }
+      });
+    }
+
+    return WithForegroundTask(
+      child: Scaffold(
+        body: Stack(
+          children: [
+            // Map
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter:
+                    currentPosition ?? const LatLng(51.5074, -0.1278),
+                initialZoom: 16.0,
               ),
-              // Route polyline
-              if (_route.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _route,
-                      color: AppColors.primary,
-                      strokeWidth: 4.0,
-                    ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.bansheerun.app',
+                  tileProvider: TileCacheService.instance.getTileProvider(),
+                ),
+                // Route polyline
+                if (route.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: route,
+                        color: AppColors.primary,
+                        strokeWidth: 4.0,
+                      ),
+                    ],
+                  ),
+                // Markers
+                MarkerLayer(
+                  markers: [
+                    // Current position
+                    if (currentPosition != null)
+                      Marker(
+                        point: currentPosition,
+                        width: 30,
+                        height: 30,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    // Banshee position
+                    if (_bansheePosition != null &&
+                        widget.bansheeMode != BansheeMode.none)
+                      Marker(
+                        point: _bansheePosition!,
+                        width: 30,
+                        height: 30,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _bansheeDeltaM > 0
+                                ? AppColors.bansheeAhead
+                                : AppColors.bansheeBehind,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.directions_run,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              // Markers
-              MarkerLayer(
-                markers: [
-                  // Current position
-                  if (_currentPosition != null)
-                    Marker(
-                      point: _currentPosition!,
-                      width: 30,
-                      height: 30,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                  // Banshee position
-                  if (_bansheePosition != null &&
-                      widget.bansheeMode != BansheeMode.none)
-                    Marker(
-                      point: _bansheePosition!,
-                      width: 30,
-                      height: 30,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _bansheeDeltaM > 0
-                              ? AppColors.bansheeAhead
-                              : AppColors.bansheeBehind,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.directions_run,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          // Stats overlay at top
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: StatsOverlay(
-                elapsedMs: _elapsedMs,
-                distanceM: _distanceM,
-                currentPaceSecPerKm: _currentPaceSecPerKm,
-                bansheeDeltaM: widget.bansheeMode != BansheeMode.none
-                    ? _bansheeDeltaM
-                    : null,
-                isPaused: _isPaused,
+            // Stats overlay at top
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: StatsOverlay(
+                  elapsedMs: runState.elapsedMs,
+                  distanceM: runState.distanceM,
+                  currentPaceSecPerKm: runState.currentPaceSecPerKm ?? 0,
+                  bansheeDeltaM: widget.bansheeMode != BansheeMode.none
+                      ? _bansheeDeltaM
+                      : null,
+                  isPaused: isPaused,
+                ),
               ),
             ),
-          ),
 
-          // Controls at bottom
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Container(
-                padding: const EdgeInsets.all(AppSizes.paddingMedium),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AppColors.background.withValues(alpha: 0.9),
-                      AppColors.background,
+            // Controls at bottom
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.paddingMedium),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        AppColors.background.withValues(alpha: 0.9),
+                        AppColors.background,
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Stop button
+                      _ControlButton(
+                        icon: Icons.stop,
+                        label: 'Stop',
+                        color: AppColors.error,
+                        onPressed: _stopRun,
+                      ),
+                      // Pause/Resume button
+                      _ControlButton(
+                        icon: isPaused ? Icons.play_arrow : Icons.pause,
+                        label: isPaused ? 'Resume' : 'Pause',
+                        color: AppColors.primary,
+                        onPressed: _togglePause,
+                        isLarge: true,
+                      ),
+                      // Center map button
+                      _ControlButton(
+                        icon: Icons.my_location,
+                        label: 'Center',
+                        color: AppColors.surfaceLight,
+                        onPressed: () {
+                          if (currentPosition != null) {
+                            _mapController.move(currentPosition, 16.0);
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Stop button
-                    _ControlButton(
-                      icon: Icons.stop,
-                      label: 'Stop',
-                      color: AppColors.error,
-                      onPressed: _stopRun,
-                    ),
-                    // Pause/Resume button
-                    _ControlButton(
-                      icon: _isPaused ? Icons.play_arrow : Icons.pause,
-                      label: _isPaused ? 'Resume' : 'Pause',
-                      color: AppColors.primary,
-                      onPressed: _togglePause,
-                      isLarge: true,
-                    ),
-                    // Center map button
-                    _ControlButton(
-                      icon: Icons.my_location,
-                      label: 'Center',
-                      color: AppColors.surfaceLight,
-                      onPressed: () {
-                        if (_currentPosition != null) {
-                          _mapController.move(_currentPosition!, 16.0);
-                        }
-                      },
-                    ),
-                  ],
-                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

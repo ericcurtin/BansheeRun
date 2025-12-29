@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:banshee_run_app/src/services/database_service.dart';
 import 'package:banshee_run_app/src/services/location_service.dart';
+import 'package:banshee_run_app/src/services/foreground_task_service.dart';
+import 'package:banshee_run_app/src/services/foreground_task_handler.dart';
 import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
@@ -217,4 +221,230 @@ final totalStatsProvider =
       final count = await databaseService.getRunCount();
       final distance = await databaseService.getTotalDistance();
       return (runCount: count, totalDistance: distance);
+    });
+
+// ============================================================================
+// Foreground Run Provider (for background-safe tracking)
+// ============================================================================
+
+final foregroundTaskServiceProvider = Provider<ForegroundTaskService>((ref) {
+  return ForegroundTaskService();
+});
+
+enum ForegroundRunStatus { idle, running, paused, finishing }
+
+class ForegroundRunState {
+  final ForegroundRunStatus status;
+  final String? runId;
+  final int elapsedMs;
+  final double distanceM;
+  final double? currentPaceSecPerKm;
+  final LatLng? currentPosition;
+  final List<LatLng> route;
+  final int startTimeMs;
+  final String? error;
+
+  const ForegroundRunState({
+    this.status = ForegroundRunStatus.idle,
+    this.runId,
+    this.elapsedMs = 0,
+    this.distanceM = 0,
+    this.currentPaceSecPerKm,
+    this.currentPosition,
+    this.route = const [],
+    this.startTimeMs = 0,
+    this.error,
+  });
+
+  ForegroundRunState copyWith({
+    ForegroundRunStatus? status,
+    String? runId,
+    int? elapsedMs,
+    double? distanceM,
+    double? currentPaceSecPerKm,
+    LatLng? currentPosition,
+    List<LatLng>? route,
+    int? startTimeMs,
+    String? error,
+  }) {
+    return ForegroundRunState(
+      status: status ?? this.status,
+      runId: runId ?? this.runId,
+      elapsedMs: elapsedMs ?? this.elapsedMs,
+      distanceM: distanceM ?? this.distanceM,
+      currentPaceSecPerKm: currentPaceSecPerKm ?? this.currentPaceSecPerKm,
+      currentPosition: currentPosition ?? this.currentPosition,
+      route: route ?? this.route,
+      startTimeMs: startTimeMs ?? this.startTimeMs,
+      error: error,
+    );
+  }
+
+  bool get isActive =>
+      status == ForegroundRunStatus.running ||
+      status == ForegroundRunStatus.paused;
+}
+
+class ForegroundRunNotifier extends StateNotifier<ForegroundRunState> {
+  final ForegroundTaskService _taskService;
+  final DatabaseService _databaseService;
+  StreamSubscription<Map<String, dynamic>>? _dataSubscription;
+
+  ForegroundRunNotifier(this._taskService, this._databaseService)
+    : super(const ForegroundRunState());
+
+  Future<void> startRun() async {
+    try {
+      // Create run in database first
+      final runId = await _databaseService.createRun();
+      final startTimeMs = DateTime.now().millisecondsSinceEpoch;
+
+      // Start foreground task
+      final success = await _taskService.startTask();
+      if (!success) {
+        state = state.copyWith(error: 'Failed to start foreground service');
+        return;
+      }
+
+      // Listen to data from task handler
+      _dataSubscription = _taskService.dataStream.listen(_onDataReceived);
+
+      // Send start command to task handler
+      _taskService.sendCommand(RunTaskCommand.start, runId: runId);
+
+      state = ForegroundRunState(
+        status: ForegroundRunStatus.running,
+        runId: runId,
+        startTimeMs: startTimeMs,
+      );
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to start run: $e');
+    }
+  }
+
+  void _onDataReceived(Map<String, dynamic> data) async {
+    // Handle GPS point data - save to database
+    if (data['type'] == 'gps_point') {
+      await _handleGpsPoint(data);
+      return;
+    }
+
+    // Handle status update from task handler
+    if (data['type'] == 'status') {
+      LatLng? position;
+      final lat = data['lat'] as double?;
+      final lon = data['lon'] as double?;
+      if (lat != null && lon != null) {
+        position = LatLng(lat, lon);
+      }
+
+      final newRoute = position != null && position != state.currentPosition
+          ? [...state.route, position]
+          : state.route;
+
+      final isPaused = data['isPaused'] as bool? ?? false;
+      final isRunning = data['isRunning'] as bool? ?? false;
+
+      state = state.copyWith(
+        elapsedMs: data['elapsedMs'] as int? ?? state.elapsedMs,
+        distanceM: (data['distanceM'] as num?)?.toDouble() ?? state.distanceM,
+        currentPaceSecPerKm: data['currentPaceSecPerKm'] as double?,
+        currentPosition: position ?? state.currentPosition,
+        route: newRoute,
+        status: isPaused
+            ? ForegroundRunStatus.paused
+            : (isRunning ? ForegroundRunStatus.running : state.status),
+      );
+    }
+  }
+
+  Future<void> _handleGpsPoint(Map<String, dynamic> data) async {
+    final runId = data['runId'] as String?;
+    if (runId == null) return;
+
+    try {
+      await _databaseService.addPointToRun(
+        runId,
+        rust_api.GpsPointDto(
+          lat: data['lat'] as double,
+          lon: data['lon'] as double,
+          altitude: data['altitude'] as double?,
+          timestampMs: data['timestampMs'] as int,
+          accuracy: data['accuracy'] as double?,
+          speed: data['speed'] as double?,
+        ),
+      );
+    } catch (e) {
+      // Log but don't fail - we want tracking to continue
+      debugPrint('Failed to save GPS point: $e');
+    }
+  }
+
+  void pauseRun() {
+    _taskService.sendCommand(RunTaskCommand.pause);
+    state = state.copyWith(status: ForegroundRunStatus.paused);
+  }
+
+  void resumeRun() {
+    _taskService.sendCommand(RunTaskCommand.resume);
+    state = state.copyWith(status: ForegroundRunStatus.running);
+  }
+
+  Future<ForegroundRunState> finishRun() async {
+    state = state.copyWith(status: ForegroundRunStatus.finishing);
+
+    // Stop the task handler
+    _taskService.sendCommand(RunTaskCommand.stop);
+
+    // Cancel data subscription
+    await _dataSubscription?.cancel();
+    _dataSubscription = null;
+
+    // Stop foreground service
+    await _taskService.stopTask();
+
+    // Finish run in database
+    if (state.runId != null) {
+      try {
+        await _databaseService.finishRun(state.runId!);
+      } catch (e) {
+        // Continue even if db write fails
+      }
+    }
+
+    // Return final state for navigation to complete screen
+    final finalState = state;
+
+    // Reset state
+    state = const ForegroundRunState();
+
+    return finalState;
+  }
+
+  Future<void> cancelRun() async {
+    _taskService.sendCommand(RunTaskCommand.stop);
+    await _dataSubscription?.cancel();
+    _dataSubscription = null;
+    await _taskService.stopTask();
+
+    // Delete the incomplete run from database
+    if (state.runId != null) {
+      await _databaseService.deleteRun(state.runId!);
+    }
+
+    state = const ForegroundRunState();
+  }
+
+  @override
+  void dispose() {
+    _dataSubscription?.cancel();
+    super.dispose();
+  }
+}
+
+final foregroundRunProvider =
+    StateNotifierProvider<ForegroundRunNotifier, ForegroundRunState>((ref) {
+      final taskService = ref.watch(foregroundTaskServiceProvider);
+      final databaseService = ref.watch(databaseServiceProvider);
+      return ForegroundRunNotifier(taskService, databaseService);
     });

@@ -7,6 +7,7 @@ import 'package:banshee_run_app/src/utils/constants.dart';
 import 'package:banshee_run_app/src/utils/formatters.dart';
 import 'package:banshee_run_app/src/rust/api/run_api.dart' as rust_api;
 import 'package:banshee_run_app/src/services/tile_cache_service.dart';
+import 'package:banshee_run_app/src/screens/history_screen.dart';
 
 class RunCompleteScreen extends ConsumerStatefulWidget {
   final double distanceM;
@@ -77,6 +78,7 @@ class _RunCompleteScreenState extends ConsumerState<RunCompleteScreen> {
       await rust_api.saveRun(runDto: runDto);
 
       if (mounted) {
+        ref.invalidate(runsProvider);
         _navigateHome();
       }
     } catch (e) {
